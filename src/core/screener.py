@@ -12,7 +12,8 @@ logger = logging.getLogger(f"{APP_LOGGER_NAME}.screener")
 
 class ScreeningResult(BaseModel):
     relevance_score: int = Field(description="Score from 0 to 10 indicating relevance to the research theme.")
-    relevance_reason: str = Field(description="Brief reason for the assigned score.")
+    relevance_reason: str = Field(description="Brief reason for the assigned score (in Japanese).")
+    summary: str = Field(description="A 1-2 sentence summary of the paper in Japanese.")
 
 
 class PaperScreener:
@@ -32,7 +33,7 @@ class PaperScreener:
             title = row.get("title", "No Title")
             abstract = row.get("abstract", "")
 
-            result = {"relevance_score": 0, "relevance_reason": "No abstract available"}
+            result = {"relevance_score": 0, "relevance_reason": "No abstract available", "summary": ""}
             if not abstract:
                 logger.warning(f"Skipping screening for {title} due to missing abstract")
             else:
@@ -41,7 +42,7 @@ class PaperScreener:
                     result = score_data.model_dump()
                 except Exception:
                     logger.exception(f"Error screening paper {title}")
-                    result = {"relevance_score": 0, "relevance_reason": "LLM Error occurred"}
+                    result = {"relevance_score": 0, "relevance_reason": "LLM Error occurred", "summary": ""}
 
             progress.update()
             return result

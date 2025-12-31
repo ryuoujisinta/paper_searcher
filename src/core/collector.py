@@ -73,6 +73,25 @@ class S2Collector:
             logger.error(f"Failed to get related papers for DOI {doi}: {e}")
             return []
 
+    def get_papers_by_dois(self, dois: list[str]) -> list[dict[str, Any]]:
+        """複数のDOIから論文情報を一括取得する"""
+        if not dois:
+            return []
+
+        logger.info(f"Fetching details for {len(dois)} DOIs")
+        results = []
+        # Semantic Scholar API might have limits on batch size, but we'll do one by one for simplicity
+        # or use batch API if available. For now, one by one is safer for rate limits with our retry logic.
+        for doi in dois:
+            try:
+                params = {"fields": "title,year,citationCount,abstract,externalIds,url"}
+                data = self._get(f"paper/DOI:{doi}", params)
+                if data:
+                    results.append(data)
+            except Exception as e:
+                logger.warning(f"Failed to fetch paper for DOI {doi}: {e}")
+        return results
+
     def _fill_missing_abstracts_with_arxiv(self, df: pd.DataFrame) -> pd.DataFrame:
         """抄録が欠けている論文を ArXiv で検索して補完する"""
         missing_mask = df["abstract"].isna() | (df["abstract"] == "")

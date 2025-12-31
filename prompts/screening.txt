@@ -7,7 +7,9 @@ Abstract: {abstract}
 
 # Task:
 Evaluate the relevance of this paper to the research scope above.
-Provide a relevance score (0-10) and a brief reason (in Japanese).
-10 means highly relevant, 0 means not relevant at all.
+Provide:
+1. A relevance score (0-10) - 10 means highly relevant, 0 means not relevant at all.
+2. A brief reason for the score (in Japanese).
+3. A concise 1-2 sentence summary of the paper's main contribution (in Japanese).
 
 Output must be in JSON format matching the schema.
