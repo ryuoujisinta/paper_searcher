@@ -5,10 +5,10 @@ from pathlib import Path
 from src.collector import S2Collector
 from src.extractor import PaperExtractor
 from src.screener import PaperScreener
-from src.utils import (create_run_directory, load_checkpoint, load_config,
-                       save_checkpoint, setup_logging)
+from src.utils import (APP_LOGGER_NAME, create_run_directory, load_checkpoint,
+                       load_config, save_checkpoint, setup_logging)
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"{APP_LOGGER_NAME}.main")
 
 
 def main():

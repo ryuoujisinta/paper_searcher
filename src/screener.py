@@ -4,9 +4,9 @@ from concurrent.futures import ThreadPoolExecutor
 from google import genai
 import pandas as pd
 from pydantic import BaseModel, Field
-from src.utils import get_prompt
+from src.utils import APP_LOGGER_NAME, ProgressTracker, get_prompt
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"{APP_LOGGER_NAME}.screener")
 
 
 class ScreeningResult(BaseModel):
@@ -25,23 +25,30 @@ class PaperScreener:
         """論文をLLMで並列にスクリーニングする"""
         logger.info(f"Starting parallel screening for {len(df)} papers with {self.max_workers} workers")
 
+        progress = ProgressTracker(total=len(df), prefix="Screening")
+
         def process_row(row):
             title = row.get("title", "No Title")
             abstract = row.get("abstract", "")
 
+            result = {"relevance_score": 0, "relevance_reason": "No abstract available"}
             if not abstract:
                 logger.warning(f"Skipping screening for {title} due to missing abstract")
-                return {"relevance_score": 0, "relevance_reason": "No abstract available"}
+            else:
+                try:
+                    score_data = self._call_llm(title, abstract, research_scope)
+                    result = score_data.model_dump()
+                except Exception:
+                    logger.exception(f"Error screening paper {title}")
+                    result = {"relevance_score": 0, "relevance_reason": "LLM Error occurred"}
 
-            try:
-                score_data = self._call_llm(title, abstract, research_scope)
-                return score_data.model_dump()
-            except Exception:
-                logger.exception(f"Error screening paper {title}")
-                return {"relevance_score": 0, "relevance_reason": "LLM Error occurred"}
+            progress.update()
+            return result
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             results = list(executor.map(lambda x: process_row(x[1]), df.iterrows()))
+
+        progress.close()
 
         # 元のDataFrameに結果を結合
         results_df = pd.DataFrame(results)

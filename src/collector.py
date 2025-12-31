@@ -1,12 +1,16 @@
 import logging
+import time
 from typing import Any
 
+import arxiv
 import pandas as pd
 import requests
 from tenacity import (retry, retry_if_exception, stop_after_attempt,
                       wait_exponential)
 
-logger = logging.getLogger(__name__)
+from src.utils import APP_LOGGER_NAME
+
+logger = logging.getLogger(f"{APP_LOGGER_NAME}.collector")
 
 S2_API_URL = "https://api.semanticscholar.org/graph/v1"
 
@@ -61,11 +65,51 @@ class S2Collector:
         }
         try:
             data = self._get(f"paper/DOI:{doi}", params)
-            related = data.get("references", []) + data.get("citations", [])
+            references = data.get("references") or []
+            citations = data.get("citations") or []
+            related = references + citations
             return related
         except Exception as e:
             logger.error(f"Failed to get related papers for DOI {doi}: {e}")
             return []
+
+    def _fill_missing_abstracts_with_arxiv(self, df: pd.DataFrame) -> pd.DataFrame:
+        """抄録が欠けている論文を ArXiv で検索して補完する"""
+        missing_mask = df["abstract"].isna() | (df["abstract"] == "")
+        missing_count = missing_mask.sum()
+        if missing_count == 0:
+            return df
+
+        logger.info(f"Attempting to fill missing abstracts for {missing_count} papers using ArXiv API...")
+
+        client = arxiv.Client()
+
+        for idx, row in df[missing_mask].iterrows():
+            title = row["title"]
+            doi = row.get("doi")
+
+            # DOI または タイトルで検索
+            query = f'ti:"{title}"'
+            if doi:
+                query += f' OR id:{doi}'
+
+            search = arxiv.Search(query=query, max_results=1)
+            try:
+                # ArXiv API のレートリミットに配慮
+                results = list(client.results(search))
+                if results:
+                    best_match = results[0]
+                    # タイトルの類似度チェック（簡易的）
+                    if title.lower() in best_match.title.lower() or best_match.title.lower() in title.lower():
+                        df.at[idx, "abstract"] = best_match.summary
+                        logger.info(f"Filled abstract for: {title}")
+
+                time.sleep(1) # Rate limit protection
+
+            except Exception as e:
+                logger.warning(f"Failed to fetch abstract from ArXiv for {title}: {e}")
+
+        return df
 
     def collect(self, keywords: list[str], seed_dois: list[str], min_citations: int, year_range: list[int],
                 snowball_from_keywords_limit: int = 0) -> pd.DataFrame:
@@ -113,5 +157,8 @@ class S2Collector:
         if len(year_range) == 2:
             df = df[(df["year"] >= year_range[0]) & (df["year"] <= year_range[1])]
 
-        logger.info(f"Total papers collected after initial filtering: {len(df)}")
+        # 6. 抄録の補完 (ArXiv)
+        df = self._fill_missing_abstracts_with_arxiv(df)
+
+        logger.info(f"Total papers collected after initial filtering and abstract completion: {len(df)}")
         return df

@@ -5,9 +5,9 @@ from typing import Literal
 from google import genai
 import pandas as pd
 from pydantic import BaseModel, Field
-from src.utils import get_prompt
+from src.utils import APP_LOGGER_NAME, ProgressTracker, get_prompt
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"{APP_LOGGER_NAME}.extractor")
 
 
 class ExtractionResult(BaseModel):
@@ -31,19 +31,26 @@ class PaperExtractor:
         """高品質な関連論文から並列に詳細情報を抽出する"""
         logger.info(f"Starting parallel information extraction for {len(df)} papers with {self.max_workers} workers")
 
+        progress = ProgressTracker(total=len(df), prefix="Extraction")
+
         def process_row(row):
             title = row.get("title", "No Title")
             abstract = row.get("abstract", "")
 
             try:
                 extraction_data = self._call_llm(title, abstract)
-                return extraction_data.model_dump()
+                result = extraction_data.model_dump()
             except Exception:
                 logger.exception(f"Error extracting info from paper {title}")
-                return {k: "Error" for k in ExtractionResult.model_fields.keys()}
+                result = {k: "Error" for k in ExtractionResult.model_fields.keys()}
+
+            progress.update()
+            return result
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             results = list(executor.map(lambda x: process_row(x[1]), df.iterrows()))
+
+        progress.close()
 
         # 元のDataFrameに結果を結合
         results_df = pd.DataFrame(results)

@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "arxiv>=2.3.1",
     "google-genai",
     "pandas>=2.3.3",
     "pydantic>=2.12.5",
@@ -12,6 +13,7 @@ dependencies = [
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
     "tenacity>=9.1.2",
+    "tqdm>=4.67.1",
 ]
 
 [dependency-groups]
