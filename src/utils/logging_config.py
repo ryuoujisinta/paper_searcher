@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from src.utils.constants import APP_LOGGER_NAME
 
+
 def setup_logging(log_dir: Path, level: str = "INFO") -> None:
     """ロギングの設定を行う (ルートロガーではなく 'review' ロガーを親にする)"""
     log_dir.mkdir(parents=True, exist_ok=True)

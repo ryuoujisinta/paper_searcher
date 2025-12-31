@@ -104,7 +104,7 @@ class S2Collector:
                         df.at[idx, "abstract"] = best_match.summary
                         logger.info(f"Filled abstract for: {title}")
 
-                time.sleep(1) # Rate limit protection
+                time.sleep(1)  # Rate limit protection
 
             except Exception as e:
                 logger.warning(f"Failed to fetch abstract from ArXiv for {title}: {e}")

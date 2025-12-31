@@ -6,7 +6,6 @@ import yaml
 import pandas as pd
 
 from src.utils.constants import CSS_FILE, DEFAULT_CONFIG_PATH
-from src.utils.io_utils import load_config as io_load_config
 
 # Page Configuration
 st.set_page_config(
@@ -92,11 +91,24 @@ def main():
             st.write("Year Range")
             year_col1, year_col2 = st.columns(2)
             with year_col1:
-                start_year = st.number_input("Start", value=config.get("search_criteria", {}).get("year_range", [2020, 2025])[0], min_value=2000, max_value=2026)
+                start_year = st.number_input(
+                    "Start",
+                    value=config.get("search_criteria", {}).get("year_range", [2020, 2025])[0],
+                    min_value=2000,
+                    max_value=2026
+                )
             with year_col2:
-                end_year = st.number_input("End", value=config.get("search_criteria", {}).get("year_range", [2020, 2025])[1], min_value=2000, max_value=2026)
+                end_year = st.number_input(
+                    "End",
+                    value=config.get("search_criteria", {}).get("year_range", [2020, 2025])[1],
+                    min_value=2000,
+                    max_value=2026
+                )
             year_range = [start_year, end_year]
-            screening_threshold = st.slider("Screening Threshold (1-10)", 1, 10, value=config.get("search_criteria", {}).get("screening_threshold", 7))
+            screening_threshold = st.slider(
+                "Screening Threshold (1-10)", 1, 10,
+                value=config.get("search_criteria", {}).get("screening_threshold", 7)
+            )
 
         st.divider()
 
@@ -108,7 +120,11 @@ def main():
                 model_extraction = st.text_input("Extraction Model", config.get("llm_settings", {}).get("model_extraction", "gemini-2.0-flash"))
             with adv2:
                 st.markdown("**Logging Settings**")
-                log_level = st.selectbox("Logging Level", ["DEBUG", "INFO", "WARNING", "ERROR"], index=["DEBUG", "INFO", "WARNING", "ERROR"].index(config.get("logging", {}).get("level", "INFO")))
+                log_level = st.selectbox(
+                    "Logging Level",
+                    ["DEBUG", "INFO", "WARNING", "ERROR"],
+                    index=["DEBUG", "INFO", "WARNING", "ERROR"].index(config.get("logging", {}).get("level", "INFO"))
+                )
 
         # Update config object locally for persistence
         updated_config = config.copy()

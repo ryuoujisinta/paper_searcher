@@ -6,8 +6,12 @@ from src.core.collector import S2Collector
 from src.core.extractor import PaperExtractor
 from src.core.screener import PaperScreener
 from src.utils.constants import APP_LOGGER_NAME
-from src.utils.io_utils import (create_run_directory, load_checkpoint, load_config,
-                          save_checkpoint)
+from src.utils.io_utils import (
+    create_run_directory,
+    load_checkpoint,
+    load_config,
+    save_checkpoint
+)
 from src.utils.logging_config import setup_logging
 
 logger = logging.getLogger(f"{APP_LOGGER_NAME}.main")
