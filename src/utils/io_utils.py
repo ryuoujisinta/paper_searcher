@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any
 import pandas as pd
 
-from .constants import DEFAULT_CONFIG_PATH, DATA_DIR, PROMPTS_DIR
-from .models import Config
+from src.utils.constants import DEFAULT_CONFIG_PATH, DATA_DIR, PROMPTS_DIR
+from src.models.models import Config
 
 def load_config(config_path: str | Path = DEFAULT_CONFIG_PATH) -> Config:
     """設定ファイルを読み込んでPydanticでバリデーションする"""

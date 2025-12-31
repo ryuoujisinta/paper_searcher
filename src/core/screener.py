@@ -4,8 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 from google import genai
 import pandas as pd
 from pydantic import BaseModel, Field
-from src.constants import APP_LOGGER_NAME
-from src.io_utils import ProgressTracker, get_prompt
+from src.utils.constants import APP_LOGGER_NAME
+from src.utils.io_utils import ProgressTracker, get_prompt
 
 logger = logging.getLogger(f"{APP_LOGGER_NAME}.screener")
 

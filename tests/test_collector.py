@@ -1,10 +1,10 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from src.collector import S2Collector
+from src.core.collector import S2Collector
 
 
-@patch("src.collector.requests.get")
+@patch("src.core.collector.requests.get")
 def test_search_by_keywords(mock_get):
     # Mock Response
     mock_response = MagicMock()

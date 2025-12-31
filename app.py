@@ -5,8 +5,8 @@ import streamlit as st
 import yaml
 import pandas as pd
 
-from src.constants import CSS_FILE, DEFAULT_CONFIG_PATH
-from src.io_utils import load_config as io_load_config
+from src.utils.constants import CSS_FILE, DEFAULT_CONFIG_PATH
+from src.utils.io_utils import load_config as io_load_config
 
 # Page Configuration
 st.set_page_config(

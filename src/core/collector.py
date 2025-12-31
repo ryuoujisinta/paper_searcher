@@ -8,7 +8,7 @@ import requests
 from tenacity import (retry, retry_if_exception, stop_after_attempt,
                       wait_exponential)
 
-from src.constants import APP_LOGGER_NAME
+from src.utils.constants import APP_LOGGER_NAME
 
 logger = logging.getLogger(f"{APP_LOGGER_NAME}.collector")
 
