@@ -16,6 +16,13 @@ def load_config(config_path: str | Path = DEFAULT_CONFIG_PATH) -> Config:
     return Config(**data)
 
 
+def save_config(config: Config, config_path: str | Path = DEFAULT_CONFIG_PATH) -> None:
+    """ConfigオブジェクトをYAMLファイルとして保存する"""
+    data = config.model_dump()
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
+
+
 def get_prompt(prompt_name: str) -> str:
     """promptsディレクトリからプロンプトを読み込む"""
     prompt_path = PROMPTS_DIR / f"{prompt_name}.txt"
