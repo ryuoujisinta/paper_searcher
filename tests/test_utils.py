@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-from src.utils import create_run_directory, load_config
+from src.io_utils import create_run_directory, load_config
 
 
 def test_load_config(tmp_path):

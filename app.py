@@ -5,6 +5,9 @@ import streamlit as st
 import yaml
 import pandas as pd
 
+from src.constants import CSS_FILE, DEFAULT_CONFIG_PATH
+from src.io_utils import load_config as io_load_config
+
 # Page Configuration
 st.set_page_config(
     page_title="Paper Review Pipeline",
@@ -14,14 +17,13 @@ st.set_page_config(
 )
 
 # Load and apply custom CSS from external file
-CSS_FILE = Path("assets/css/style.css")
 if CSS_FILE.exists():
     with open(CSS_FILE, "r") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 else:
     st.warning("CSS file not found.")
 
-CONFIG_PATH = Path("config.yml")
+CONFIG_PATH = DEFAULT_CONFIG_PATH
 
 
 def load_config():

@@ -5,8 +5,10 @@ from pathlib import Path
 from src.collector import S2Collector
 from src.extractor import PaperExtractor
 from src.screener import PaperScreener
-from src.utils import (APP_LOGGER_NAME, create_run_directory, load_checkpoint,
-                       load_config, save_checkpoint, setup_logging)
+from src.constants import APP_LOGGER_NAME
+from src.io_utils import (create_run_directory, load_checkpoint, load_config,
+                          save_checkpoint)
+from src.logging_config import setup_logging
 
 logger = logging.getLogger(f"{APP_LOGGER_NAME}.main")
 
