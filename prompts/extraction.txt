@@ -1,0 +1,10 @@
+# Paper Information:
+Title: {title}
+Abstract: {abstract}
+
+# Task:
+Extract the following information from the paper's title and abstract.
+Ensure information is concise and accurate.
+One-line summary must be in Japanese.
+
+Output must be in JSON format matching the schema.
