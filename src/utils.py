@@ -112,10 +112,13 @@ def create_run_directory(project_name: str) -> Path:
 
 
 def save_checkpoint(data: Any, path: Path) -> None:
-    """中間データを保存する (pickle または pandas)"""
+    """中間データを保存する (CSV または pickle)"""
     import pandas as pd
     if isinstance(data, pd.DataFrame):
-        data.to_pickle(path)
+        if path.suffix == ".csv":
+            data.to_csv(path, index=False, encoding="utf-8-sig")
+        else:
+            data.to_pickle(path)
     else:
         import pickle
         with open(path, "wb") as f:
@@ -125,6 +128,8 @@ def save_checkpoint(data: Any, path: Path) -> None:
 def load_checkpoint(path: Path) -> Any:
     """中間データを読み込む"""
     import pandas as pd
+    if path.suffix == ".csv":
+        return pd.read_csv(path)
     if path.suffix == ".pkl":
         return pd.read_pickle(path)
     else:

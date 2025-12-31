@@ -31,7 +31,7 @@ def main():
         return
 
     # --- Phase 1: Collection ---
-    raw_data_path = run_dir / "raw" / "collected_papers.pkl"
+    raw_data_path = run_dir / "raw" / "collected_papers.csv"
     if raw_data_path.exists():
         logger.info("Found Phase 1 checkpoint. Loading...")
         df_collected = load_checkpoint(raw_data_path)
@@ -54,7 +54,7 @@ def main():
         return
 
     # --- Phase 2: Screening ---
-    interim_data_path = run_dir / "interim" / "screened_papers.pkl"
+    interim_data_path = run_dir / "interim" / "screened_papers.csv"
     if interim_data_path.exists():
         logger.info("Found Phase 2 checkpoint. Loading...")
         df_screened = load_checkpoint(interim_data_path)
