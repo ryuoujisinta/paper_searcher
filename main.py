@@ -94,6 +94,11 @@ def main():
         # 抄録の補完
         df_new = collector._fill_missing_abstracts_with_arxiv(df_new)
 
+        # --- Save Raw Data (Iterative) ---
+        raw_csv_path = run_dir / "raw" / f"collected_papers_iter_{iteration_num}.csv"
+        df_new.to_csv(raw_csv_path, index=False, encoding="utf-8-sig")
+        logger.info(f"Saved raw papers for iteration {iteration_num} to {raw_csv_path}")
+
         # 2. Scoring & Summarization (Phase 2 equivalent)
         logger.info(f"Scoring {len(df_new)} new papers...")
         df_scored = screener.screen_papers(df_new, nl_query)
@@ -104,6 +109,11 @@ def main():
 
         # 全体リストに結合
         all_papers_df = pd.concat([all_papers_df, df_scored], ignore_index=True)
+
+        # --- Save Interim Data (Cumulative) ---
+        interim_csv_path = run_dir / "interim" / "screened_papers_cumulative.csv"
+        all_papers_df.to_csv(interim_csv_path, index=False, encoding="utf-8-sig")
+        logger.info(f"Saved cumulative screened papers to {interim_csv_path}")
 
         # 3. Snowball Search (Next iteration seeds)
         if iteration_num < config.search_criteria.iterations:
@@ -129,28 +139,13 @@ def main():
     # 同一論文が複数イテレーションで現れる可能性（スコアが変わる可能性）を考慮し、最高スコアを残す
     final_df = all_papers_df.sort_values(by="relevance_score", ascending=False).drop_duplicates(subset=["doi"])
 
-    # --- Phase 3: Extraction (Final Selection) ---
-    threshold = config.search_criteria.screening_threshold
-    df_for_extraction = final_df[final_df["relevance_score"] >= threshold].copy()
-    logger.info(f"Total papers passed screening (score >= {threshold}): {len(df_for_extraction)}")
-
-    if df_for_extraction.empty:
-        logger.warning("No papers passed the screening threshold. Saving all scored papers instead.")
-        final_data_csv = run_dir / "final" / "scored_papers_below_threshold.csv"
-        final_df.to_csv(final_data_csv, index=False, encoding="utf-8-sig")
-        return
-
+    # --- Saving Final Results ---
     final_data_csv = run_dir / "final" / "final_review_matrix.csv"
-    logger.info("--- Phase 3: Extraction (詳細抽出) ---")
-    extractor = PaperExtractor(
-        api_key=google_key,
-        model_name=config.llm_settings.model_extraction
-    )
-    df_final = extractor.extract_info(df_for_extraction)
+    logger.info(f"Saving final sorted results to: {final_data_csv}")
 
-    # CSV形式で保存
-    df_final.to_csv(final_data_csv, index=False, encoding="utf-8-sig")
-    logger.info(f"Process complete! Final matrix saved to: {final_data_csv}")
+    # 関連度スコアでソートして保存
+    final_df.to_csv(final_data_csv, index=False, encoding="utf-8-sig")
+    logger.info(f"Process complete! Saved {len(final_df)} papers.")
 
 
 if __name__ == "__main__":
