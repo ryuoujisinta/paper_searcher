@@ -1,7 +1,10 @@
+import requests
 from unittest.mock import MagicMock, patch
+
 import pytest
 import pandas as pd
-from src.core.collector import S2Collector
+
+from src.core.collector import S2Collector, is_retryable_s2_error
 
 
 @pytest.fixture
@@ -151,3 +154,88 @@ def test_fill_missing_abstracts_no_op(collector):
         df_filled = collector._fill_missing_abstracts_with_arxiv(df)
         mock_client.assert_not_called()
         assert df_filled.iloc[0]["abstract"] == "Existing Abstract"
+
+
+def test_is_retryable_s2_error():
+    # 429 -> True
+    err_429 = requests.exceptions.HTTPError()
+    err_429.response = MagicMock(status_code=429)
+    assert is_retryable_s2_error(err_429) is True
+
+    # 500 -> True
+    err_500 = requests.exceptions.HTTPError()
+    err_500.response = MagicMock(status_code=500)
+    assert is_retryable_s2_error(err_500) is True
+
+    # 404 -> False
+    err_404 = requests.exceptions.HTTPError()
+    err_404.response = MagicMock(status_code=404)
+    assert is_retryable_s2_error(err_404) is False
+
+    # Other exception -> False
+    assert is_retryable_s2_error(ValueError()) is False
+
+
+@patch("src.core.collector.S2Collector._get")
+def test_get_related_papers_edge_cases(mock_get, collector):
+    # Exception handling
+    mock_get.side_effect = Exception("API Error")
+    res = collector.get_related_papers("doi")
+    assert res == []
+
+    # Limit logic
+    mock_get.side_effect = None
+    mock_get.return_value = {
+        "references": [{"title": "R1"}, {"title": "R2"}],
+        "citations": [{"title": "C1"}]
+    }  # Total 3
+    res_limit = collector.get_related_papers("doi", limit=2)
+    assert len(res_limit) == 2
+
+
+@patch("src.core.collector.S2Collector._get")
+def test_get_papers_by_dois_edge_cases(mock_get, collector):
+    # Empty input
+    assert collector.get_papers_by_dois([]) == []
+
+    # Exception for one DOI
+    mock_get.side_effect = [Exception("Error"), {"title": "Success"}]
+    res = collector.get_papers_by_dois(["fail", "success"])
+    assert len(res) == 1
+    assert res[0]["title"] == "Success"
+
+
+def test_process_papers_edge_cases(collector):
+    # Empty input
+    assert collector.process_papers([], set(), 10, [2000, 2025]).empty
+
+    # No DOI field
+    papers_no_doi = [{"title": "No DOI", "externalIds": {}}]
+    assert collector.process_papers(papers_no_doi, set(), 0, [2000, 2099]).empty
+
+    # Excluded DOI
+    papers_excluded = [{"externalIds": {"DOI": "D1"}, "title": "Excluded"}]
+    assert collector.process_papers(papers_excluded, {"D1"}, 0, [2000, 2099]).empty
+
+    # Duplicate DOI in same batch
+    papers_dup = [
+        {"externalIds": {"DOI": "D1"}, "title": "T1", "abstract": "A"},
+        {"externalIds": {"DOI": "D1"}, "title": "T1 Duplicate", "abstract": "A"}
+    ]
+    df_dup = collector.process_papers(papers_dup, set(), 0, [2000, 2099])
+    assert len(df_dup) == 1
+
+    # Filter by citations
+    papers_cite = [{"externalIds": {"DOI": "D1"}, "citationCount": 5}]
+    assert collector.process_papers(papers_cite, set(), 10, [2000, 2099]).empty
+
+    # Filter by year
+    papers_year = [{"externalIds": {"DOI": "D1"}, "year": 1999, "citationCount": 100}]
+    assert collector.process_papers(papers_year, set(), 0, [2000, 2025]).empty
+
+    # No papers passed criteria
+    assert collector.process_papers(papers_cite, set(), 100, [2000, 2025]).empty
+
+
+def test_get_snowball_candidates_empty(collector):
+    assert collector.get_snowball_candidates(pd.DataFrame(), 5) == []

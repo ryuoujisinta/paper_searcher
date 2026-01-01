@@ -1,9 +1,19 @@
 import os
 import shutil
+from unittest.mock import patch
 
 import pytest
+import pandas as pd
 
-from src.utils.io_utils import create_run_directory, load_config
+from src.utils.io_utils import (
+    create_run_directory,
+    load_config,
+    save_config,
+    get_prompt,
+    save_checkpoint,
+    load_checkpoint
+)
+from src.models.models import Config
 
 
 def test_load_config(tmp_path):
@@ -51,3 +61,60 @@ def test_create_run_directory(tmp_path, monkeypatch):
     # Clean up
     if data_dir.exists():
         shutil.rmtree(data_dir)
+
+
+def test_save_config(tmp_path):
+    config = Config(
+        project_name="saved_project",
+        search_criteria={
+            "keywords": ["test"],
+            "seed_paper_dois": []
+        },
+        llm_settings={"model_screening": "dummy"}
+    )
+    save_path = tmp_path / "saved_config.yml"
+    save_config(config, save_path)
+
+    assert save_path.exists()
+    loaded = load_config(save_path)
+    assert loaded.project_name == "saved_project"
+
+
+def test_get_prompt(tmp_path):
+    # Mock PROMPTS_DIR
+    mock_prompts_dir = tmp_path / "prompts"
+    mock_prompts_dir.mkdir()
+    (mock_prompts_dir / "test_prompt.txt").write_text("Hello {name}", encoding="utf-8")
+
+    # Patch the global constant in the module where it's used
+    with patch("src.utils.io_utils.PROMPTS_DIR", mock_prompts_dir):
+        content = get_prompt("test_prompt")
+        assert content == "Hello {name}"
+
+        with pytest.raises(FileNotFoundError):
+            get_prompt("missing_prompt")
+
+
+def test_checkpoint_io(tmp_path):
+    # Test DataFrame CSV
+    df = pd.DataFrame({"col": [1, 2]})
+    csv_path = tmp_path / "test.csv"
+    save_checkpoint(df, csv_path)
+    assert csv_path.exists()
+    loaded_df = load_checkpoint(csv_path)
+    assert len(loaded_df) == 2
+
+    # Test DataFrame Pickle
+    pkl_path = tmp_path / "test.pkl"
+    save_checkpoint(df, pkl_path)
+    assert pkl_path.exists()
+    loaded_pkl = load_checkpoint(pkl_path)
+    assert len(loaded_pkl) == 2
+
+    # Test Generic Pickle
+    data = {"key": "value"}
+    obj_path = tmp_path / "test.obj"
+    save_checkpoint(data, obj_path)
+    assert obj_path.exists()
+    loaded_data = load_checkpoint(obj_path)
+    assert loaded_data["key"] == "value"
