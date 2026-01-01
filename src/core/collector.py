@@ -182,6 +182,13 @@ class S2Collector:
         # 抄録の補完
         df = self._fill_missing_abstracts_with_arxiv(df)
 
+        # 抄録がない論文を最終的にフィルタリング
+        before_drop = len(df)
+        df = df[df["abstract"].str.strip().astype(bool) & df["abstract"].notna()]
+        dropped_count = before_drop - len(df)
+        if dropped_count > 0:
+            logger.info(f"Dropped {dropped_count} papers that still have no abstract after ArXiv fill attempt.")
+
         logger.info(f"Papers ready for screening: {len(df)}")
         return df
 

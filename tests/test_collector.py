@@ -26,17 +26,20 @@ def test_search_by_keywords(mock_get):
 
 
 def test_collect_filtering():
-    # collect内で内部関数を呼ぶため、そちらもMock化が必要だが
-    # ここでは簡易的に collector.search_by_keywords と collector.get_related_papers をMock化する
     collector = S2Collector()
-    collector.search_by_keywords = MagicMock(return_value=[
-        {"title": "P1", "year": 2023, "citationCount": 50, "externalIds": {"DOI": "D1"}, "abstract": "A"},
-        {"title": "P2", "year": 2020, "citationCount": 5, "externalIds": {"DOI": "D2"}, "abstract": "B"}
-    ])
-    collector.get_related_papers = MagicMock(return_value=[])
+
+    # Input papers
+    papers = [
+        {"title": "P1", "year": 2023, "citationCount": 50, "externalIds": {"DOI": "D1"}, "abstract": "A", "url": "http://p1"},
+        {"title": "P2", "year": 2020, "citationCount": 5, "externalIds": {"DOI": "D2"}, "abstract": "B", "url": "http://p2"}
+    ]
+
+    # Mocking _fill_missing_abstracts_with_arxiv since it makes external calls
+    collector._fill_missing_abstracts_with_arxiv = MagicMock(side_effect=lambda df: df)
 
     # min_citations=10, year_range=[2021, 2024]
-    df = collector.collect(["test"], [], 10, [2021, 2024])
+    # process_papers expects a list of dicts as input
+    df = collector.process_papers(papers, set(), 10, [2021, 2024])
 
     assert len(df) == 1
     assert df.iloc[0]["title"] == "P1"

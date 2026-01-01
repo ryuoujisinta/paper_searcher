@@ -160,7 +160,7 @@ def main():
             full_log = ""
 
             process = subprocess.Popen(
-                ["python", "main.py"],
+                ["uv", "run", "main.py"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
