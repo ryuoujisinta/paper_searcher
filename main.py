@@ -38,72 +38,49 @@ def main():
     all_papers_df = pd.DataFrame()
     processed_dois = set()
 
-    # 1. Initial Keyword Search
+    # 1. Initial Collection
     keywords = config.search_criteria.keywords
     nl_query = config.search_criteria.natural_language_query or " ".join(keywords)
-    logger.info(f"Initial keyword search for: {keywords}")
+    logger.info(f"Initial search for keywords: {keywords}")
 
     collector = S2Collector()
     screener = PaperScreener(api_key=google_key, model_name=config.llm_settings.model_screening)
 
-    # 初回のシードDOIがあれば取得
-    if config.search_criteria.seed_paper_dois:
-        logger.info(f"Adding initial seed DOIs: {config.search_criteria.seed_paper_dois}")
-        seed_papers = collector.get_papers_by_dois(config.search_criteria.seed_paper_dois)
-        new_papers = seed_papers
-    else:
-        new_papers = collector.search_by_keywords(keywords)
+    # イテレーション管理
+    next_candidates = []  # 次回の検索候補（raw dict list）
+
+    # 初回候補の取得
+    next_candidates = collector.collect_initial(
+        keywords=keywords,
+        seed_dois=config.search_criteria.seed_paper_dois
+    )
 
     for i in range(config.search_criteria.iterations):
         iteration_num = i + 1
         logger.info(f"--- Iteration {iteration_num}/{config.search_criteria.iterations} ---")
 
-        if not new_papers:
-            logger.warning("No new papers found in this iteration. Breaking loop.")
-            break
-
-        # 変換
-        df_new = pd.DataFrame(new_papers)
-
-        # DOIの抽出と重複排除
-        def get_doi(x):
-            return x.get("DOI") if isinstance(x, dict) else None
-
-        if "doi" not in df_new.columns and "externalIds" in df_new.columns:
-            df_new["doi"] = df_new["externalIds"].apply(get_doi)
-
-        # 既知のDOIを除外
-        df_new = df_new[~df_new["doi"].isin(processed_dois)]
-        if df_new.empty:
-            logger.info("No new unique papers found in this iteration.")
-            break
-
-        # 基本フィルタリング (引用数、年)
-        min_citations = config.search_criteria.min_citations
-        year_range = config.search_criteria.year_range
-
-        if "citationCount" in df_new.columns:
-            df_new = df_new[df_new["citationCount"] >= min_citations]
-        if "year" in df_new.columns and len(year_range) == 2:
-            df_new = df_new[(df_new["year"] >= year_range[0]) & (df_new["year"] <= year_range[1])]
+        # 処理 & フィルタリング
+        df_new = collector.process_papers(
+            papers=next_candidates,
+            exclude_dois=processed_dois,
+            min_citations=config.search_criteria.min_citations,
+            year_range=config.search_criteria.year_range
+        )
 
         if df_new.empty:
-            logger.info("No papers passed initial filtering in this iteration.")
+            logger.info("No new papers to screen in this iteration.")
             break
-
-        # 抄録の補完
-        df_new = collector._fill_missing_abstracts_with_arxiv(df_new)
 
         # --- Save Raw Data (Iterative) ---
         raw_csv_path = run_dir / "raw" / f"collected_papers_iter_{iteration_num}.csv"
         df_new.to_csv(raw_csv_path, index=False, encoding="utf-8-sig")
         logger.info(f"Saved raw papers for iteration {iteration_num} to {raw_csv_path}")
 
-        # 2. Scoring & Summarization (Phase 2 equivalent)
+        # 2. Scoring & Summarization
         logger.info(f"Scoring {len(df_new)} new papers...")
         df_scored = screener.screen_papers(df_new, nl_query)
 
-        # 既読リストに追加
+        # 既読リスト更新
         new_dois = set(df_scored["doi"].dropna().unique())
         processed_dois.update(new_dois)
 
@@ -118,18 +95,11 @@ def main():
         # 3. Snowball Search (Next iteration seeds)
         if iteration_num < config.search_criteria.iterations:
             top_n = config.search_criteria.top_n_for_snowball
-            # 現在のイテレーションで見つかった上位論文を取得
-            top_papers = df_scored.sort_values(by="relevance_score", ascending=False).head(top_n)
-
-            next_seeds = []
-            for _, row in top_papers.iterrows():
-                doi = row.get("doi")
-                if doi:
-                    related = collector.get_related_papers(doi)
-                    next_seeds.extend(related)
-
-            new_papers = next_seeds
-            logger.info(f"Found {len(new_papers)} potential papers for next iteration via snowballing.")
+            logger.info(f"Collecting snowball candidates from top {top_n} papers...")
+            next_candidates = collector.get_snowball_candidates(df_scored, top_n)
+            logger.info(f"Found {len(next_candidates)} potential papers for next iteration.")
+        else:
+            next_candidates = []  # Loop ends
 
     if all_papers_df.empty:
         logger.warning("No papers collected throughout iterations. Exiting.")

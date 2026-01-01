@@ -92,6 +92,99 @@ class S2Collector:
                 logger.warning(f"Failed to fetch paper for DOI {doi}: {e}")
         return results
 
+    def collect_initial(self, keywords: list[str], seed_dois: list[str]) -> list[dict[str, Any]]:
+        """初期収集: キーワード検索とSeed DOIからの取得をマージする"""
+        all_candidates = []
+
+        # 1. Keyword Search
+        if keywords:
+            keyword_papers = self.search_by_keywords(keywords)
+            all_candidates.extend(keyword_papers)
+            logger.info(f"Found {len(keyword_papers)} papers from keyword search.")
+
+        # 2. Seed DOIs Search
+        if seed_dois:
+            logger.info(f"Adding initial seed DOIs: {seed_dois}")
+            seed_papers = self.get_papers_by_dois(seed_dois)
+            all_candidates.extend(seed_papers)
+
+        return all_candidates
+
+    def get_snowball_candidates(self, df_scored: pd.DataFrame, top_n: int) -> list[dict[str, Any]]:
+        """スコア上位の論文から引用・被引用を取得する"""
+        if df_scored.empty:
+            return []
+
+        top_papers = df_scored.sort_values(by="relevance_score", ascending=False).head(top_n)
+        candidates = []
+
+        for _, row in top_papers.iterrows():
+            doi = row.get("doi")
+            if doi:
+                related = self.get_related_papers(doi)
+                candidates.extend(related)
+
+        return candidates
+
+    def process_papers(
+        self,
+        papers: list[dict[str, Any]],
+        exclude_dois: set[str],
+        min_citations: int,
+        year_range: list[int]
+    ) -> pd.DataFrame:
+        """収集したRawデータをDataFrame化し、フィルタリング・補完を行う"""
+        if not papers:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(papers)
+
+        # DOIの抽出と重複排除
+        def get_doi(x):
+            return x.get("DOI") if isinstance(x, dict) else None
+
+        if "doi" not in df.columns:
+            if "externalIds" in df.columns:
+                df["doi"] = df["externalIds"].apply(get_doi)
+            else:
+                # externalIdsもdoiもない場合は処理不能として除外
+                df["doi"] = None
+
+        # DOIのない論文はスキップ
+        df = df.dropna(subset=["doi"])
+        logger.info(f"Dropped {len(papers) - len(df)} papers without DOI.")
+
+        # 既知のDOIを除外
+        df = df[~df["doi"].isin(exclude_dois)]
+
+        # 今回のバッチ内での重複排除
+        logger.info(f"Dropped {sum(df.duplicated(subset=["doi"]))} duplicate papers.")
+        df = df.drop_duplicates(subset=["doi"])
+
+        if df.empty:
+            logger.info("No new unique papers found after DOI filtering.")
+            return df
+
+        # 基本フィルタリング (引用数、年)
+        if "citationCount" in df.columns:
+            inds = df["citationCount"] >= min_citations
+            df = df[inds]
+            logger.info(f"Dropped {sum(~inds)} papers with less than {min_citations} citations.")
+        if "year" in df.columns and len(year_range) == 2:
+            inds = (df["year"] >= year_range[0]) & (df["year"] <= year_range[1])
+            df = df[inds]
+            logger.info(f"Dropped {sum(~inds)} papers outside of year range {year_range}.")
+
+        if df.empty:
+            logger.info("No papers passed criteria (citations/year).")
+            return df
+
+        # 抄録の補完
+        df = self._fill_missing_abstracts_with_arxiv(df)
+
+        logger.info(f"Papers ready for screening: {len(df)}")
+        return df
+
     def _fill_missing_abstracts_with_arxiv(self, df: pd.DataFrame) -> pd.DataFrame:
         """抄録が欠けている論文を ArXiv で検索して補完する"""
         missing_mask = df["abstract"].isna() | (df["abstract"] == "")
@@ -99,85 +192,30 @@ class S2Collector:
         if missing_count == 0:
             return df
 
-        logger.info(f"Attempting to fill missing abstracts for {missing_count} papers using ArXiv API...")
+        # ... (rest of the logic is same, limiting output for brevity if needed) ...
+        # Since I'm replacing the whole block, I need to include the full method body or valid code.
+        # I'll paste the original body here.
 
+        logger.info(f"Attempting to fill missing abstracts for {missing_count} papers using ArXiv API...")
         client = arxiv.Client()
 
         for idx, row in df[missing_mask].iterrows():
             title = row["title"]
             doi = row.get("doi")
-
-            # DOI または タイトルで検索
             query = f'ti:"{title}"'
             if doi:
                 query += f' OR id:{doi}'
 
             search = arxiv.Search(query=query, max_results=1)
             try:
-                # ArXiv API のレートリミットに配慮
                 results = list(client.results(search))
                 if results:
                     best_match = results[0]
-                    # タイトルの類似度チェック（簡易的）
                     if title.lower() in best_match.title.lower() or best_match.title.lower() in title.lower():
                         df.at[idx, "abstract"] = best_match.summary
                         logger.info(f"Filled abstract for: {title}")
-
-                time.sleep(1)  # Rate limit protection
-
+                time.sleep(1)
             except Exception as e:
                 logger.warning(f"Failed to fetch abstract from ArXiv for {title}: {e}")
 
-        return df
-
-    def collect(self, keywords: list[str], seed_dois: list[str], min_citations: int, year_range: list[int],
-                snowball_from_keywords_limit: int = 0) -> pd.DataFrame:
-        """全フェーズの収集ロジックを統合する"""
-        all_papers = []
-
-        # 1. Keyword Search
-        keyword_papers = self.search_by_keywords(keywords)
-        all_papers.extend(keyword_papers)
-
-        # 2. Snowballing from specific Seed DOIs
-        active_seed_dois = list(seed_dois) if seed_dois else []
-
-        # 3. Add top papers from keyword search to seed DOIs if requested
-        if snowball_from_keywords_limit > 0:
-            top_keyword_dois = []
-            for paper in keyword_papers[:snowball_from_keywords_limit]:
-                doi = paper.get("externalIds", {}).get("DOI")
-                if doi:
-                    top_keyword_dois.append(doi)
-
-            logger.info(f"Adding top {len(top_keyword_dois)} papers from keywords to snowball seeds.")
-            active_seed_dois.extend(top_keyword_dois)
-
-        # 4. Citation Mining (Snowballing)
-        unique_seeds = list(set(active_seed_dois))
-        for doi in unique_seeds:
-            related = self.get_related_papers(doi)
-            all_papers.extend(related)
-
-        # 5. Deduplication and Initial Filtering
-        df = pd.DataFrame(all_papers)
-        if df.empty:
-            return df
-
-        # 重複排除 (DOI優先、タイトル補助)
-        def get_doi(x):
-            return x.get("DOI") if isinstance(x, dict) else None
-
-        df["doi"] = df["externalIds"].apply(get_doi)
-        df = df.drop_duplicates(subset=["doi"]).drop_duplicates(subset=["title"])
-
-        # 基本フィルタリング
-        df = df[df["citationCount"] >= min_citations]
-        if len(year_range) == 2:
-            df = df[(df["year"] >= year_range[0]) & (df["year"] <= year_range[1])]
-
-        # 6. 抄録の補完 (ArXiv)
-        df = self._fill_missing_abstracts_with_arxiv(df)
-
-        logger.info(f"Total papers collected after initial filtering and abstract completion: {len(df)}")
         return df

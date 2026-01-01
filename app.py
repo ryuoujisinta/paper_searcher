@@ -55,12 +55,13 @@ def main():
         col1, col2 = st.columns(2)
 
         with col1:
-            keywords = st.text_area("キーワード (1行に1つ)", value="\n".join(config.search_criteria.keywords), height=150)
+            keywords = st.text_area("キーワード (1行に1つ)", value="\n".join(config.search_criteria.keywords), height=100)
+            nl_query = st.text_area("自然言語クエリ (スコアリング用)", value=config.search_criteria.natural_language_query, height=50)
 
             doi_help = "例: 10.1145/3639148 (10.から始まる形式)"
             seed_dois_raw = st.text_area("シード論文のDOI (1行に1つ)",
                                          value="\n".join(config.search_criteria.seed_paper_dois),
-                                         height=150,
+                                         height=100,
                                          help=doi_help)
 
             # DOI Format Check
@@ -73,9 +74,18 @@ def main():
                 st.warning(f"⚠️ 無効なDOI形式が検出されました: {', '.join(invalid_dois)}")
 
         with col2:
+            st.write("反復設定")
+            iter_col1, iter_col2 = st.columns(2)
+            with iter_col1:
+                iterations = st.number_input("反復回数", value=config.search_criteria.iterations, min_value=1, max_value=5)
+            with iter_col2:
+                top_n_snowball = st.number_input("Snowball件数/回", value=config.search_criteria.top_n_for_snowball, min_value=1)
+
+            st.divider()
+
             limit_col1, limit_col2 = st.columns(2)
             with limit_col1:
-                snowball_limit = st.number_input("スノーボール制限", value=config.search_criteria.snowball_from_keywords_limit)
+                snowball_limit = st.number_input("初期Snowball制限", value=config.search_criteria.snowball_from_keywords_limit, help="キーワード検索上位からシードに追加する数")
             with limit_col2:
                 min_citations = st.number_input("最小引用数", value=config.search_criteria.min_citations)
 
@@ -108,7 +118,6 @@ def main():
             with adv1:
                 st.markdown("**LLM 設定**")
                 model_screening = st.text_input("スクリーニング用モデル", config.llm_settings.model_screening)
-                model_extraction = st.text_input("データ抽出用モデル", config.llm_settings.model_extraction)
             with adv2:
                 st.markdown("**ロギング設定**")
                 log_level = st.selectbox(
@@ -120,15 +129,18 @@ def main():
         # Update config object for saving
         updated_config = Config(
             project_name=project_name,
-            llm_settings=LLMSettings(model_screening=model_screening, model_extraction=model_extraction),
+            llm_settings=LLMSettings(model_screening=model_screening),
             logging=LoggingConfig(level=log_level),
             search_criteria=SearchCriteria(
                 keywords=[k.strip() for k in keywords.split("\n") if k.strip()],
+                natural_language_query=nl_query,
                 seed_paper_dois=seed_dois,
                 snowball_from_keywords_limit=snowball_limit,
                 min_citations=min_citations,
                 year_range=list(year_range),
-                screening_threshold=screening_threshold
+                screening_threshold=screening_threshold,
+                iterations=iterations,
+                top_n_for_snowball=top_n_snowball
             )
         )
 

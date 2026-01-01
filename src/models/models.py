@@ -19,7 +19,6 @@ class LoggingConfig(BaseModel):
 
 class LLMSettings(BaseModel):
     model_screening: str = "gemini-2.0-flash-lite"
-    model_extraction: str = "gemini-2.0-flash-lite"
 
 
 class Config(BaseModel):

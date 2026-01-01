@@ -19,52 +19,49 @@
 
 システムは以下の3つのパイプライン処理で構成される。
 
-1.  **Phase 1: Collection (広範な収集)**
-    *   キーワード検索と引用ネットワーク探索（Snowball Sampling）を組み合わせ、母集団を形成する。
-    *   S2AGで抄録が取得できない場合、ArXiv APIを利用して補完を試みる。
+## 2. システムアーキテクチャ
 
-2.  **Phase 2: Screening (選別)**
-    *   LLMを用いてアブストラクトを読み込み、研究テーマへの関連性を判定してノイズを除去する。
-    *   `screening_threshold` に基づき、高品質な論文のみを次フェーズに送る。
+システムは、**反復的な検索と選別のループ**によって高品質な論文を収集する。
 
-3.  **Phase 3: Extraction (情報抽出)**
-    *   選別された論文からレビューに必要な項目（課題、手法、結果など）を抽出し、構造化する。
-    *   並列処理により、多数の論文を効率的に処理する。
+1.  **Iterative Loop (反復プロセス)**
+    *   **Iteration 1:** キーワード検索および明示的なSeed Paperから初期候補を収集。
+    *   **Screening & Scoring:** LLMを用いて自然言語クエリに対する関連度を判定し、同時に要約を生成。
+    *   **Snowballing (Iteration 2+):** 高スコアの論文を新たなSeedとして、引用ネットワークを探索して候補を拡張。
+    *   これを指定回数 (`iterations`) 繰り返す。
+
+2.  **Output Generation**
+    *   最終的に収集・選別された論文をスコア順にソートし、CSVとして出力する。
 
 ---
 
 ## 3. 詳細機能要件
 
-### Phase 1: Collection (収集)
+### 3.1 Iterative Collection & Screening
 
 *   **入力:**
-    *   検索キーワード（複数指定可能）
-    *   Seed Papers（DOIリスト）
-    *   検索期間（Year Range）
-    *   `snowball_from_keywords_limit`: キーワード検索上位の結果をスノーボールサンプリングの起点に追加する数
+    *   検索キーワード (`keywords`)
+    *   自然言語クエリ (`natural_language_query`) - *スコアリング重視*
+    *   Seed Papers (`seed_paper_dois`)
+    *   反復回数 (`iterations`)
+    *   スノーボール対象数 (`top_n_for_snowball`)
+*   **処理フロー:**
+    1.  **Initial Collection (Iter 1):** キーワードとSeed DOIから候補を一括取得。
+    2.  **Processing:** 重複排除、フィルタリング (`min_citations`, `year_range`)、Abstract補完 (ArXiv)。
+    3.  **Screening:** LLMにより `relevance_score`, `relevance_reason`, `summary` (日本語) を生成。
+    4.  **Save:** 中間結果 (`interim`) と Rawデータ (`raw`) を保存。
+    5.  **Snowballing (Iter 2+):** 直前のループで高評価だった上位 N 件の引用・被引用を取得し、次回の候補とする。
+*   **出力:**
+    *   `raw/collected_papers_iter_X.csv`: 各回の収集生データ
+    *   `interim/screened_papers_cumulative.csv`: 累積のスクリーニング結果
+
+### 3.2 Final Output
+
+*   **入力:** 累積スクリーニング結果
 *   **処理:**
-    1.  **Keyword Search:** APIを用いて関連論文を取得。
-    2.  **Snowballing:** Seed Papers およびキーワード上位論文の参考文献(References)と引用文献(Citations)を取得。
-    3.  **Deduplication:** DOIまたはTitleをキーとして重複を排除。
-    4.  **Basic Filter:** `min_citations` 未満、指定期間外を除外。
-    5.  **Abstract Completion:** ArXiv APIを用いて欠損しているアブストラクトを補完。
-*   **出力:** 候補論文リスト（CSV/Checkpoint）
-
-### Phase 2: Screening (選別)
-
-*   **入力:** Phase 1の候補論文リスト
-*   **処理:**
-    *   LLM (Gemini 2.0 Flash Lite) を用いて、キーワード群から構築されたResearch Scopeへの合致度を判定。
-    *   各論文に `relevance_score` (0-10) と `relevance_reason` を付与。
-*   **出力:** フィルタリング済み論文リスト
-
-### Phase 3: Extraction (抽出)
-
-*   **入力:** Phase 2で合格した論文リスト（`relevance_score` >= `screening_threshold`）
-*   **処理:**
-    *   LLM (Gemini 2.0 Flash Lite) を用いてJSON Modeで構造化情報を抽出。
-*   **抽出項目 (Schema):** `problem`, `method`, `dataset`, `metric`, `limitation`, `category`, `one_line_summary` (日本語)
-*   **出力:** 最終CSVファイル (`final_review_matrix.csv`)
+    *   論文を `relevance_score` の降順でソート。
+    *   重複の最終確認（DOIベース）。
+*   **出力:** `final/final_review_matrix.csv`
+    *   主要カラム: Title, Year, Citations, Abstract, Score, Reason, Summary, DOI, URL
 
 ---
 
@@ -84,7 +81,6 @@ search_criteria:
 
 llm_settings:
   model_screening: "gemini-2.0-flash-lite"
-  model_extraction: "gemini-2.0-flash-lite"
 
 logging:
   level: "INFO"
@@ -133,8 +129,7 @@ logging:
 ├── src/
 │   ├── core/           # パイプライン本体
 │   │   ├── collector.py
-│   │   ├── screener.py
-│   │   └── extractor.py
+│   │   └── screener.py
 │   ├── models/         # Pydantic モデル定義
 │   │   └── models.py
 │   └── utils/          # 共通ユーティリティ

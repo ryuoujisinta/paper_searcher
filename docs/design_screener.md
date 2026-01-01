@@ -8,9 +8,12 @@
 ### 2.1 LLM 判定 (`_call_llm`)
 - **モデル:** `gemini-2.0-flash-lite` (デフォルト)。
 - **プロンプト:** `prompts/screening.txt` を使用。
-    - `research_scope`: キーワードから構成される研究テーマ。
+    - `research_scope`: 自然言語クエリ (`natural_language_query`) とキーワードから構成される検索意図。
     - `title`, `abstract`: 論文の情報。
-- **JSON Mode:** `google-genai` の SDK 機能を使い、構造化データ (`relevance_score`, `relevance_reason`) として取得。
+- **JSON Mode:** `google-genai` の SDK 機能を使い、構造化データとして取得。
+    - `relevance_score` (0-10)
+    - `relevance_reason` (理由)
+    - `summary` (日本語による簡潔な要約)
 - **Pydantic 連携:** `ScreeningResult` モデルを用いて、LLM の出力を検証。
 
 ### 2.2 並列処理 (`screen_papers`)
