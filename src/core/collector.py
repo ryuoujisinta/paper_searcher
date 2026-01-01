@@ -116,12 +116,33 @@ class S2Collector:
 
         return all_candidates
 
-    def get_snowball_candidates(self, df_scored: pd.DataFrame, top_n: int, related_limit: int = -1) -> list[dict[str, Any]]:
-        """スコア上位の論文から引用・被引用を取得する"""
+    def get_snowball_candidates(
+        self,
+        df_scored: pd.DataFrame,
+        top_n: int,
+        related_limit: int = -1,
+        threshold: float | None = None
+    ) -> list[dict[str, Any]]:
+        """
+        スコア上位の論文から引用・被引用を取得する。
+        top_n と threshold (スコア閾値) のうち、より多くの論文が含まれる方を採用する。
+        """
         if df_scored.empty:
             return []
 
-        top_papers = df_scored.sort_values(by="relevance_score", ascending=False).head(top_n)
+        # 1. Top N で絞り込み
+        top_n_papers = df_scored.sort_values(by="relevance_score", ascending=False).head(top_n)
+
+        # 2. Threshold で絞り込み (もし指定があれば)
+        final_papers = top_n_papers
+        if threshold is not None:
+            threshold_papers = df_scored[df_scored["relevance_score"] >= threshold]
+            if len(threshold_papers) > len(top_n_papers):
+                logging.info(f"Using threshold {threshold} yielded {len(threshold_papers)} papers, which is more than top_n {top_n}.")
+                final_papers = threshold_papers
+
+        # ソートはしておく
+        top_papers = final_papers.sort_values(by="relevance_score", ascending=False)
         candidates = []
 
         for _, row in top_papers.iterrows():

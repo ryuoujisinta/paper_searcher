@@ -104,7 +104,8 @@ def main():
             next_candidates = collector.get_snowball_candidates(
                 df_scored,
                 top_n,
-                related_limit=config.search_criteria.max_related_papers
+                related_limit=config.search_criteria.max_related_papers,
+                threshold=config.search_criteria.screening_threshold
             )
             logger.info(f"Found {len(next_candidates)} potential papers for next iteration.")
         else:

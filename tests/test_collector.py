@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, patch
+import pandas as pd
 
 
 from src.core.collector import S2Collector
@@ -43,3 +44,31 @@ def test_collect_filtering():
 
     assert len(df) == 1
     assert df.iloc[0]["title"] == "P1"
+
+
+@patch("src.core.collector.S2Collector.get_related_papers")
+def test_get_snowball_candidates_threshold(mock_get_related):
+    collector = S2Collector()
+    mock_get_related.return_value = [{"title": "Related"}]
+
+    # Create dummy DataFrame with scores
+    # Scores: 10, 9, 8, 7, 6, 5
+    data = {"doi": [f"10.123/{i}" for i in range(6)], "relevance_score": [10, 9, 8, 7, 6, 5]}
+    df = pd.DataFrame(data)
+
+    # Case 1: top_n=2, threshold=None -> Should return 2 (Scores 10, 9)
+    collector.get_snowball_candidates(df, top_n=2, threshold=None)
+    assert mock_get_related.call_count == 2
+    mock_get_related.reset_mock()
+
+    # Case 2: top_n=2, threshold=8 -> Should return 3 (Scores 10, 9, 8)
+    # Because count(>=8) is 3, which is > top_n(2)
+    collector.get_snowball_candidates(df, top_n=2, threshold=8)
+    assert mock_get_related.call_count == 3
+    mock_get_related.reset_mock()
+
+    # Case 3: top_n=5, threshold=9 -> Should return 5 (Scores 10, 9, 8, 7, 6)
+    # Because count(>=9) is 2, which is < top_n(5). So max is 5.
+    collector.get_snowball_candidates(df, top_n=5, threshold=9)
+    assert mock_get_related.call_count == 5
+    mock_get_related.reset_mock()
