@@ -1,18 +1,18 @@
 # Review Paper Automator
 
-特定の研究テーマに関して、重要論文（Seed Papers）やキーワードを起点に先行研究を効率的に収集・選別・抽出し、レビュー論文（Survey Paper）の執筆を支援するツールです。
+特定の研究テーマに関して、重要論文（Seed Papers）やキーワードを起点に先行研究を効率的に収集・選別し、レビュー論文（Survey Paper）の執筆を支援するツールです。
 
 ## 🚀 主な機能
 
-- **Phase 1: Collection (収集)**: Semantic Scholar API を使用し、キーワード検索と引用ネットワーク探索（スノーボールサンプリング）を組み合わせて候補論文を収集します。
-- **Phase 2: Screening (選別)**: LLM (Gemini 1.5 Flash など) を用いて、アブストラクトの内容が研究スコープに合致するかを自動判定します。
-- **Phase 3: Extraction (情報抽出)**: 選別された論文から、「課題」「手法」「結果」「限界点」などの重要情報を構造化データとして抽出します。
+- **Phase 1: Collection (収集)**: Semantic Scholar API を使用し、キーワード検索と引用ネットワーク探索（スノーボールサンプリング）を組み合わせて候補論文を収集します。多段階の反復プロセスにより、関連性の高い論文を効率的に発掘します。
+- **Phase 2: Screening (選別)**: LLM (Gemini 1.5 Flash など) を用いて、アブストラクトの内容が研究スコープに合致するかを自動判定し、要約を生成します。
 
 ## 🛠 技術スタック
 
 - **Language:** Python 3.13
 - **Package Manager:** [uv](https://github.com/astral-sh/uv)
-- **API:** Semantic Scholar (S2AG)
+- **Framework:** [Streamlit](https://streamlit.io/) (Web UI)
+- **API:** Semantic Scholar (S2AG), ArXiv
 - **LLM:** Google Generative AI (Gemini)
 - **Libraries:** `pandas`, `pydantic`, `tenacity`, `pyyaml`
 
@@ -42,6 +42,16 @@ GOOGLE_API_KEY=your_google_api_key
 
 ## 📖 使い方
 
+### Web UI での実行（推奨）
+
+以下のコマンドでダッシュボードを起動し、ブラウザ上で設定編集と実行を行えます。
+
+```powershell
+uv run streamlit run app.py
+```
+
+### CLI での実行
+
 1. `config.yml` を編集し、検索キーワードや Seed Paper の DOI、フィルタリング条件を設定します。
 2. 以下のコマンドでプロジェクトを実行します。
 
@@ -51,11 +61,13 @@ uv run main.py
 
 ## 📁 ディレクトリ構成
 
-- `src/`: ソースコード (Collector, Screener, Extractor 等)
+- `src/`: ソースコード (Collector, Screener 等)
 - `data/`: 実行結果や中間データ（プロジェクト名+日付ごとに保存）
 - `docs/`: 仕様書などのドキュメント
 - `prompts/`: LLM 用のプロンプトテンプレート
-- `config.yml`: 検索・抽出の設定
+- `config.yml`: 検索・選別の設定
+- `app.py`: Web UI エントリーポイント
+- `main.py`: CLI エントリーポイント
 - `pyproject.toml`: 依存ライブラリ管理
 
 ## 📝 ライセンス

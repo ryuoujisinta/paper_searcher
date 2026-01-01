@@ -4,7 +4,7 @@
 
 ### 1.1 目的
 
-特定の研究テーマにおいて、Seed Paper（重要論文）およびキーワードを起点に先行研究を芋づる式に探索し、レビュー論文（Survey Paper）の執筆に耐えうる100件以上の高品質な論文リストを自動生成する。さらに、各論文の「手法」「結果」「課題」などをLLMを用いて構造化データとして抽出する。
+特定の研究テーマにおいて、Seed Paper（重要論文）およびキーワードを起点に先行研究を芋づる式に探索し、レビュー論文（Survey Paper）の執筆に耐えうる100件以上の高品質な論文リストを自動生成する。さらに、各論文について「手法」「結果」などの要約を生成する。
 
 ### 1.2 スコープ
 
@@ -44,6 +44,7 @@
     *   Seed Papers (`seed_paper_dois`)
     *   反復回数 (`iterations`)
     *   スノーボール対象数 (`top_n_for_snowball`)
+    *   その他: `keyword_search_limit`, `max_related_papers`, `screening_threshold`
 *   **処理フロー:**
     1.  **Initial Collection (Iter 1):** キーワードとSeed DOIから候補を一括取得。
     2.  **Processing:** 重複排除、フィルタリング (`min_citations`, `year_range`)、Abstract補完 (ArXiv)。
@@ -74,10 +75,14 @@ project_name: "my_project"
 search_criteria:
   keywords: ["Large Language Models", "Survey"]
   seed_paper_dois: []
-  snowball_from_keywords_limit: 5
-  min_citations: 10
+  keyword_search_limit: 100
+  max_related_papers: -1
+  snowball_from_keywords_limit: 10
+  min_citations: 5
   year_range: [2020, 2025]
   screening_threshold: 7
+  iterations: 5
+  top_n_for_snowball: 10
 
 llm_settings:
   model_screening: "gemini-2.0-flash-lite"

@@ -33,10 +33,10 @@
 
 ### 2.5 スノーボール候補抽出 (`get_snowball_candidates`)
 - **目的:** 次のイテレーションのために、有望な論文から探索範囲を広げる。
-- **入力:** スコアリング済みの DataFrame, 上位 N 件指定 (`top_n`)。
+- **入力:** スコアリング済みの DataFrame, 上位 N 件指定 (`top_n`), 閾値指定 (`threshold`).
 - **処理:**
-    1. `relevance_score` 上位 N 件の論文を抽出。
-    2. 各論文の引用・被引用 (`get_related_papers`) を取得し、リスト化して返却。
+    1. `relevance_score` が `top_n` 件以内、または `threshold` 以上の論文を特定（どちらか件数が多い方を採用する「Adaptive Snowball」ロジック）。
+    2. 選ばれた各論文の引用・被引用 (`get_related_papers`) を取得し、リスト化して返却。
 
 ### 2.6 統合プロセス処理 (`process_papers`)
 - **目的:** 生の論文リストからクリーンでユニークな DataFrame を生成する。

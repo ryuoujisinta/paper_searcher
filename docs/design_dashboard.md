@@ -11,7 +11,7 @@
 
 ### 2.2 設定画面 (`mode == "config"`)
 - **Project Settings:** プロジェクト名の設定。
-- **Search Criteria:** キーワード、Seed DOI (バリデーション付き)、閾値、年度範囲等の設定。
+- **Search Criteria:** キーワード、Seed DOI、反復回数、Snowball設定、閾値、年度範囲等の設定。
 - **Advanced Settings (Expander):** モデル名、ログレベル等の詳細設定。
 - **保存機能:** 入力値を `config.yml` に `yaml.safe_dump` で保存。
 
