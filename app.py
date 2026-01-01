@@ -85,8 +85,12 @@ def main():
 
             limit_col1, limit_col2 = st.columns(2)
             with limit_col1:
-                snowball_limit = st.number_input("初期Snowball制限", value=config.search_criteria.snowball_from_keywords_limit, help="キーワード検索上位からシードに追加する数")
+                keyword_limit = st.number_input("キーワード検索制限", value=config.search_criteria.keyword_search_limit, help="キーワード検索で取得する最大件数")
             with limit_col2:
+                snowball_limit = st.number_input("初期Snowball制限", value=config.search_criteria.snowball_from_keywords_limit, help="キーワード検索上位からシードに追加する数")
+
+            min_c_col1, min_c_col2 = st.columns(2)
+            with min_c_col1:
                 min_citations = st.number_input("最小引用数", value=config.search_criteria.min_citations)
 
             st.write("発行年範囲")
@@ -135,6 +139,7 @@ def main():
                 keywords=[k.strip() for k in keywords.split("\n") if k.strip()],
                 natural_language_query=nl_query,
                 seed_paper_dois=seed_dois,
+                keyword_search_limit=keyword_limit,
                 snowball_from_keywords_limit=snowball_limit,
                 min_citations=min_citations,
                 year_range=list(year_range),

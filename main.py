@@ -52,7 +52,8 @@ def main():
     # 初回候補の取得
     next_candidates = collector.collect_initial(
         keywords=keywords,
-        seed_dois=config.search_criteria.seed_paper_dois
+        seed_dois=config.search_criteria.seed_paper_dois,
+        limit=config.search_criteria.keyword_search_limit
     )
 
     for i in range(config.search_criteria.iterations):

@@ -92,13 +92,13 @@ class S2Collector:
                 logger.warning(f"Failed to fetch paper for DOI {doi}: {e}")
         return results
 
-    def collect_initial(self, keywords: list[str], seed_dois: list[str]) -> list[dict[str, Any]]:
+    def collect_initial(self, keywords: list[str], seed_dois: list[str], limit: int = 100) -> list[dict[str, Any]]:
         """初期収集: キーワード検索とSeed DOIからの取得をマージする"""
         all_candidates = []
 
         # 1. Keyword Search
         if keywords:
-            keyword_papers = self.search_by_keywords(keywords)
+            keyword_papers = self.search_by_keywords(keywords, limit=limit)
             all_candidates.extend(keyword_papers)
             logger.info(f"Found {len(keyword_papers)} papers from keyword search.")
 
