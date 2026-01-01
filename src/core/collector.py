@@ -7,6 +7,7 @@ import pandas as pd
 import requests
 from tenacity import (retry, retry_if_exception, stop_after_attempt,
                       wait_exponential)
+from tqdm import tqdm
 
 from src.utils.constants import APP_LOGGER_NAME
 
@@ -204,14 +205,11 @@ class S2Collector:
         if missing_count == 0:
             return df
 
-        # ... (rest of the logic is same, limiting output for brevity if needed) ...
-        # Since I'm replacing the whole block, I need to include the full method body or valid code.
-        # I'll paste the original body here.
-
         logger.info(f"Attempting to fill missing abstracts for {missing_count} papers using ArXiv API...")
         client = arxiv.Client()
 
-        for idx, row in df[missing_mask].iterrows():
+        # イテレーション部分をtqdmでラップしてプログレスバー化
+        for idx, row in tqdm(df[missing_mask].iterrows(), total=missing_count, desc="Filling abstracts from ArXiv"):
             title = row["title"]
             doi = row.get("doi")
             query = f'ti:"{title}"'
@@ -225,7 +223,7 @@ class S2Collector:
                     best_match = results[0]
                     if title.lower() in best_match.title.lower() or best_match.title.lower() in title.lower():
                         df.at[idx, "abstract"] = best_match.summary
-                        logger.info(f"Filled abstract for: {title}")
+                        # logger.info(f"Filled abstract for: {title}")  # ループ内ログは抑制
                 time.sleep(1)
             except Exception as e:
                 logger.warning(f"Failed to fetch abstract from ArXiv for {title}: {e}")
