@@ -239,3 +239,52 @@ def test_process_papers_edge_cases(collector):
 
 def test_get_snowball_candidates_empty(collector):
     assert collector.get_snowball_candidates(pd.DataFrame(), 5) == []
+
+
+@patch("src.core.collector.logger")
+def test_log_retry_attempt(mock_logger):
+    from src.core.collector import log_retry_attempt
+
+    # Mock RetryState
+    retry_state = MagicMock()
+    retry_state.attempt_number = 1
+    retry_state.next_action.sleep = 10
+
+    # Case 1: Rate Limit (429)
+    err_429 = requests.exceptions.HTTPError()
+    err_429.response = MagicMock(status_code=429)
+    retry_state.outcome.exception.return_value = err_429
+
+    log_retry_attempt(retry_state)
+    mock_logger.warning.assert_called_with(
+        "Rate Limit hit. Status Code: 429. Retrying in 10 seconds... (Attempt 1)"
+    )
+
+    # Case 2: Server Error (500)
+    err_500 = requests.exceptions.HTTPError()
+    err_500.response = MagicMock(status_code=500)
+    retry_state.outcome.exception.return_value = err_500
+
+    log_retry_attempt(retry_state)
+    mock_logger.warning.assert_called_with(
+        "Server Error hit. Status Code: 500. Retrying in 10 seconds... (Attempt 1)"
+    )
+
+    # Case 3: Other HTTP Error (e.g. 503)
+    err_503 = requests.exceptions.HTTPError()
+    err_503.response = MagicMock(status_code=503)
+    retry_state.outcome.exception.return_value = err_503
+
+    log_retry_attempt(retry_state)
+    mock_logger.warning.assert_called_with(
+        "Server Error hit. Status Code: 503. Retrying in 10 seconds... (Attempt 1)"
+    )
+
+    # Case 4: Non-HTTP Error
+    err_other = ValueError("Some error")
+    retry_state.outcome.exception.return_value = err_other
+
+    log_retry_attempt(retry_state)
+    mock_logger.warning.assert_called_with(
+        "Unknown Error hit. Status Code: N/A. Retrying in 10 seconds... (Attempt 1)"
+    )

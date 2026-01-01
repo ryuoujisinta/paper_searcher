@@ -26,6 +26,25 @@ def is_retryable_s2_error(exception: Exception) -> bool:
     return False
 
 
+def log_retry_attempt(retry_state):
+    exception = retry_state.outcome.exception()
+    status_code = "N/A"
+    error_type = "Unknown Error"
+
+    if isinstance(exception, requests.exceptions.HTTPError) and exception.response is not None:
+        status_code = exception.response.status_code
+        if status_code == 429:
+            error_type = "Rate Limit"
+        elif status_code >= 500:
+            error_type = "Server Error"
+
+    logger.warning(
+        f"{error_type} hit. Status Code: {status_code}. "
+        f"Retrying in {retry_state.next_action.sleep} seconds... "
+        f"(Attempt {retry_state.attempt_number})"
+    )
+
+
 class S2Collector:
     def __init__(self):
         self.headers = {}
@@ -34,10 +53,7 @@ class S2Collector:
         stop=stop_after_attempt(10),
         wait=wait_exponential(multiplier=2, min=5, max=120),
         retry=retry_if_exception(is_retryable_s2_error),
-        before_sleep=lambda retry_state: logger.warning(
-            f"Rate limit or server error hit. Retrying in {retry_state.next_action.sleep} seconds... "
-            f"(Attempt {retry_state.attempt_number})"
-        )
+        before_sleep=log_retry_attempt
     )
     def _get(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
         url = f"{S2_API_URL}/{endpoint}"
