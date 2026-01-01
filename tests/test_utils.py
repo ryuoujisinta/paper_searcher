@@ -1,15 +1,33 @@
 import os
 import shutil
 
+import pytest
+
 from src.utils.io_utils import create_run_directory, load_config
 
 
 def test_load_config(tmp_path):
     config_file = tmp_path / "config.yml"
-    config_file.write_text("project_name: 'test'", encoding="utf-8")
+    config_content = """
+project_name: 'test'
+logging:
+  level: 'INFO'
+search_criteria:
+  keywords: ['test']
+  seed_paper_dois: []
+llm_settings:
+  model_screening: 'dummy'
+"""
+    config_file.write_text(config_content.strip(), encoding="utf-8")
 
     config = load_config(str(config_file))
-    assert config["project_name"] == "test"
+    assert config.project_name == "test"
+    assert config.logging.level == "INFO"
+
+
+def test_load_config_not_found():
+    with pytest.raises(FileNotFoundError):
+        load_config("non_existent_config.yml")
 
 
 def test_create_run_directory(tmp_path, monkeypatch):
@@ -30,5 +48,6 @@ def test_create_run_directory(tmp_path, monkeypatch):
     assert (run_dir / "raw").exists()
     assert (run_dir / "config.yml").exists()
 
-    # クリーンアップ
-    shutil.rmtree(data_dir)
+    # Clean up
+    if data_dir.exists():
+        shutil.rmtree(data_dir)

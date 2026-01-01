@@ -3,17 +3,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 from google import genai
 import pandas as pd
-from pydantic import BaseModel, Field
+from src.models.models import ScreeningResult
 from src.utils.constants import APP_LOGGER_NAME
 from src.utils.io_utils import ProgressTracker, get_prompt
 
 logger = logging.getLogger(f"{APP_LOGGER_NAME}.screener")
-
-
-class ScreeningResult(BaseModel):
-    relevance_score: int = Field(description="Score from 0 to 10 indicating relevance to the research theme.")
-    relevance_reason: str = Field(description="Brief reason for the assigned score (in Japanese).")
-    summary: str = Field(description="A 1-2 sentence summary of the paper in Japanese.")
 
 
 class PaperScreener:
