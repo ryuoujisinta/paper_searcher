@@ -56,9 +56,9 @@ class S2Collector:
         data = self._get("paper/search", params)
         return data.get("data", [])
 
-    def get_related_papers(self, doi: str) -> list[dict[str, Any]]:
+    def get_related_papers(self, doi: str, limit: int = -1) -> list[dict[str, Any]]:
         """特定の論文の参考文献と引用文献を取得する"""
-        logger.info(f"Getting references and citations for DOI: {doi}")
+        logger.info(f"Getting references and citations for DOI: {doi} (Limit: {limit})")
         params = {
             "fields": "references.title,references.year,references.citationCount,references.abstract,references.externalIds,references.url,"
                       "citations.title,citations.year,citations.citationCount,citations.abstract,citations.externalIds,citations.url"
@@ -68,6 +68,11 @@ class S2Collector:
             references = data.get("references") or []
             citations = data.get("citations") or []
             related = references + citations
+
+            if limit != -1 and len(related) > limit:
+                logger.info(f"Limiting related papers from {len(related)} to {limit}")
+                related = related[:limit]
+
             return related
         except Exception as e:
             logger.error(f"Failed to get related papers for DOI {doi}: {e}")
@@ -110,7 +115,7 @@ class S2Collector:
 
         return all_candidates
 
-    def get_snowball_candidates(self, df_scored: pd.DataFrame, top_n: int) -> list[dict[str, Any]]:
+    def get_snowball_candidates(self, df_scored: pd.DataFrame, top_n: int, related_limit: int = -1) -> list[dict[str, Any]]:
         """スコア上位の論文から引用・被引用を取得する"""
         if df_scored.empty:
             return []
@@ -121,7 +126,7 @@ class S2Collector:
         for _, row in top_papers.iterrows():
             doi = row.get("doi")
             if doi:
-                related = self.get_related_papers(doi)
+                related = self.get_related_papers(doi, limit=related_limit)
                 candidates.extend(related)
 
         return candidates

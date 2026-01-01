@@ -44,7 +44,11 @@ def main():
     logger.info(f"Initial search for keywords: {keywords}")
 
     collector = S2Collector()
-    screener = PaperScreener(api_key=google_key, model_name=config.llm_settings.model_screening)
+    screener = PaperScreener(
+        api_key=google_key,
+        model_name=config.llm_settings.model_screening,
+        max_workers=config.llm_settings.max_screening_workers
+    )
 
     # イテレーション管理
     next_candidates = []  # 次回の検索候補（raw dict list）
@@ -97,7 +101,11 @@ def main():
         if iteration_num < config.search_criteria.iterations:
             top_n = config.search_criteria.top_n_for_snowball
             logger.info(f"Collecting snowball candidates from top {top_n} papers...")
-            next_candidates = collector.get_snowball_candidates(df_scored, top_n)
+            next_candidates = collector.get_snowball_candidates(
+                df_scored,
+                top_n,
+                related_limit=config.search_criteria.max_related_papers
+            )
             logger.info(f"Found {len(next_candidates)} potential papers for next iteration.")
         else:
             next_candidates = []  # Loop ends

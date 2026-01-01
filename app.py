@@ -122,6 +122,7 @@ def main():
             with adv1:
                 st.markdown("**LLM 設定**")
                 model_screening = st.text_input("スクリーニング用モデル", config.llm_settings.model_screening)
+                max_workers = st.number_input("スクリーニング並列数", value=config.llm_settings.max_screening_workers, min_value=1, max_value=20)
             with adv2:
                 st.markdown("**ロギング設定**")
                 log_level = st.selectbox(
@@ -130,16 +131,27 @@ def main():
                     index=["DEBUG", "INFO", "WARNING", "ERROR"].index(config.logging.level)
                 )
 
+            st.markdown("**その他収集設定**")
+            max_related = st.number_input(
+                "詳細検索(Snowball)時の最大関連論文数 (-1=無制限)",
+                value=config.search_criteria.max_related_papers,
+                help="-1にすると対象論文のすべての参照・引用論文を取得します。"
+            )
+
         # Update config object for saving
         updated_config = Config(
             project_name=project_name,
-            llm_settings=LLMSettings(model_screening=model_screening),
+            llm_settings=LLMSettings(
+                model_screening=model_screening,
+                max_screening_workers=max_workers
+            ),
             logging=LoggingConfig(level=log_level),
             search_criteria=SearchCriteria(
                 keywords=[k.strip() for k in keywords.split("\n") if k.strip()],
                 natural_language_query=nl_query,
                 seed_paper_dois=seed_dois,
                 keyword_search_limit=keyword_limit,
+                max_related_papers=max_related,
                 snowball_from_keywords_limit=snowball_limit,
                 min_citations=min_citations,
                 year_range=list(year_range),
