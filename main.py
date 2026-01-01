@@ -1,6 +1,8 @@
 import logging
 import os
+import sys
 from pathlib import Path
+
 import pandas as pd
 
 from src.core.collector import S2Collector
@@ -129,4 +131,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logger.exception(f"Fatal error during pipeline execution: {e}")
+        sys.exit(1)
