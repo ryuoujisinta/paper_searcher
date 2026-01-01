@@ -64,6 +64,9 @@ uv run main.py
 - `src/`: ソースコード (Collector, Screener 等)
 - `data/`: 実行結果や中間データ（プロジェクト名+日付ごとに保存）
 - `docs/`: 仕様書などのドキュメント
+    - `design/`: 詳細設計書 (`collector.md`, `screener.md`, `dashboard.md`)
+    - `manuals/`: 運用・テストマニュアル (`operations.md`, `testing.md`)
+    - `reference/`: データ定義 (`data_dictionary.md`)
 - `prompts/`: LLM 用のプロンプトテンプレート
 - `config.yml`: 検索・選別の設定
 - `app.py`: Web UI エントリーポイント
