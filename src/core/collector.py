@@ -5,7 +5,7 @@ from typing import Any
 import arxiv
 import pandas as pd
 import requests
-from tenacity import (retry, retry_if_exception, stop_after_attempt,
+from tenacity import (Retrying, retry_if_exception, stop_after_attempt,
                       wait_exponential)
 from tqdm import tqdm
 
@@ -46,20 +46,24 @@ def log_retry_attempt(retry_state):
 
 
 class S2Collector:
-    def __init__(self):
+    def __init__(self, max_retries: int = 10):
         self.headers = {}
+        self.max_retries = max_retries
 
-    @retry(
-        stop=stop_after_attempt(10),
-        wait=wait_exponential(multiplier=2, min=5, max=120),
-        retry=retry_if_exception(is_retryable_s2_error),
-        before_sleep=log_retry_attempt
-    )
     def _get(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
         url = f"{S2_API_URL}/{endpoint}"
-        response = requests.get(url, params=params, headers=self.headers, timeout=30)
-        response.raise_for_status()
-        return response.json()
+
+        for attempt in Retrying(
+            stop=stop_after_attempt(self.max_retries),
+            wait=wait_exponential(multiplier=2, min=5, max=120),
+            retry=retry_if_exception(is_retryable_s2_error),
+            before_sleep=log_retry_attempt,
+            reraise=True
+        ):
+            with attempt:
+                response = requests.get(url, params=params, headers=self.headers, timeout=30)
+                response.raise_for_status()
+                return response.json()
 
     def search_by_keywords(self, keywords: list[str], limit: int = 100) -> list[dict[str, Any]]:
         """キーワード検索を実行する"""

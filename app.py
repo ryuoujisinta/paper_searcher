@@ -132,11 +132,21 @@ def main():
                 )
 
             st.markdown("**その他収集設定**")
-            max_related = st.number_input(
-                "詳細検索(Snowball)時の最大関連論文数 (-1=無制限)",
-                value=config.search_criteria.max_related_papers,
-                help="-1にすると対象論文のすべての参照・引用論文を取得します。"
-            )
+            col_other1, col_other2 = st.columns(2)
+            with col_other1:
+                max_related = st.number_input(
+                    "詳細検索(Snowball)時の最大関連論文数 (-1=無制限)",
+                    value=config.search_criteria.max_related_papers,
+                    help="-1にすると対象論文のすべての参照・引用論文を取得します。"
+                )
+            with col_other2:
+                max_retries = st.number_input(
+                    "APIリトライ最大回数",
+                    value=config.search_criteria.max_retries,
+                    min_value=0,
+                    max_value=50,
+                    help="Semantic Scholar API等の呼び出し失敗時の最大リトライ回数"
+                )
 
         # Update config object for saving
         updated_config = Config(
@@ -157,7 +167,8 @@ def main():
                 year_range=list(year_range),
                 screening_threshold=screening_threshold,
                 iterations=iterations,
-                top_n_for_snowball=top_n_snowball
+                top_n_for_snowball=top_n_snowball,
+                max_retries=max_retries
             )
         )
 

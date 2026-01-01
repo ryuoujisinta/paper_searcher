@@ -13,6 +13,7 @@ class SearchCriteria(BaseModel):
     screening_threshold: int = 7
     iterations: int = 1
     top_n_for_snowball: int = 5
+    max_retries: int = 10
 
 
 class LoggingConfig(BaseModel):

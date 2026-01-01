@@ -45,7 +45,7 @@ def main():
     nl_query = config.search_criteria.natural_language_query or " ".join(keywords)
     logger.info(f"Initial search for keywords: {keywords}")
 
-    collector = S2Collector()
+    collector = S2Collector(max_retries=config.search_criteria.max_retries)
     screener = PaperScreener(
         api_key=google_key,
         model_name=config.llm_settings.model_screening,
