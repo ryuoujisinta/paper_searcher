@@ -33,7 +33,11 @@ class PaperScreener:
             else:
                 try:
                     score_data = self._call_llm(title, abstract, research_scope)
-                    result = score_data.model_dump()
+                    if score_data:
+                        result = score_data.model_dump()
+                    else:
+                        logger.warning(f"LLM returned None for paper {title}")
+                        result = {"relevance_score": 0, "relevance_reason": "LLM returned invalid response", "summary": ""}
                 except Exception:
                     logger.exception(f"Error screening paper {title}")
                     result = {"relevance_score": 0, "relevance_reason": "LLM Error occurred", "summary": ""}
