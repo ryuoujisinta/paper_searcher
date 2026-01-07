@@ -1,3 +1,4 @@
+import re
 import subprocess
 from pathlib import Path
 
@@ -70,9 +71,6 @@ def main():
                 height=100,
                 help=doi_help,
             )
-
-            # DOI Format Check
-            import re
 
             doi_pattern = re.compile(r"^10\.\d{4,9}/[-._;()/:a-zA-Z0-9]+$")
             seed_dois = [d.strip() for d in seed_dois_raw.split("\n") if d.strip()]
@@ -254,9 +252,16 @@ def main():
         # Results Viewer
         st.header("📊 実行結果")
         project_name = config.project_name
-        data_dir = Path("data") / project_name
+        data_dir = Path("data")
         if data_dir.exists():
-            runs = sorted([d for d in data_dir.iterdir() if d.is_dir()], reverse=True)
+            # Match directories like "YYYYMMDD_HHMMSS_{project_name}"
+            # The pattern expects exactly 8 digits, underscore, 6 digits, underscore, and project_name
+            pattern = re.compile(rf"^\d{{8}}_\d{{6}}_{re.escape(project_name)}$")
+
+            runs = sorted(
+                [d for d in data_dir.iterdir() if d.is_dir() and pattern.match(d.name)],
+                reverse=True
+            )
             if runs:
                 selected_run = st.selectbox(
                     "結果を表示する実行を選択してください",
