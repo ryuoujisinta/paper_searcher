@@ -41,12 +41,15 @@ class UISettings(BaseModel):
     items_per_page: int = 10
 
 
+class LayoutConfig(BaseModel):
+    ui_settings: UISettings = Field(default_factory=UISettings)
+
+
 class Config(BaseModel):
     project_name: str
     search_criteria: SearchCriteria
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     llm_settings: LLMSettings
-    ui_settings: UISettings = Field(default_factory=UISettings)
 
 
 class ScreeningResult(BaseModel):

@@ -6,8 +6,13 @@ from typing import Any
 import pandas as pd
 import yaml
 
-from src.models.models import Config
-from src.utils.constants import DATA_DIR, DEFAULT_CONFIG_PATH, PROMPTS_DIR
+from src.models.models import Config, LayoutConfig
+from src.utils.constants import (
+    DATA_DIR,
+    DEFAULT_CONFIG_PATH,
+    LAYOUT_CONFIG_PATH,
+    PROMPTS_DIR,
+)
 
 
 def load_config(config_path: str | Path = DEFAULT_CONFIG_PATH) -> Config:
@@ -19,6 +24,24 @@ def load_config(config_path: str | Path = DEFAULT_CONFIG_PATH) -> Config:
 
 def save_config(config: Config, config_path: str | Path = DEFAULT_CONFIG_PATH) -> None:
     """ConfigオブジェクトをYAMLファイルとして保存する"""
+    data = config.model_dump()
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
+
+
+def load_layout_config(config_path: str | Path = LAYOUT_CONFIG_PATH) -> LayoutConfig:
+    """レイアウト設定ファイルを読み込んでPydanticでバリデーションする"""
+    if not Path(config_path).exists():
+        return LayoutConfig()
+    with open(config_path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    return LayoutConfig(**data)
+
+
+def save_layout_config(
+    config: LayoutConfig, config_path: str | Path = LAYOUT_CONFIG_PATH
+) -> None:
+    """LayoutConfigオブジェクトをYAMLファイルとして保存する"""
     data = config.model_dump()
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
@@ -45,6 +68,8 @@ def create_run_directory(project_name: str) -> Path:
     # 設定ファイルのコピー
     if DEFAULT_CONFIG_PATH.exists():
         shutil.copy(DEFAULT_CONFIG_PATH, run_dir / "config.yml")
+    if LAYOUT_CONFIG_PATH.exists():
+        shutil.copy(LAYOUT_CONFIG_PATH, run_dir / "layout_config.yml")
 
     return run_dir
 

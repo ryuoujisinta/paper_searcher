@@ -1,0 +1,9 @@
+ui_settings:
+  essential_columns:
+  - relevance_score
+  - title
+  - summary
+  - relevance_reason
+  - citationCount
+  - year
+  items_per_page: 5

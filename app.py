@@ -5,9 +5,20 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from src.models.models import Config, LLMSettings, LoggingConfig, SearchCriteria
+from src.models.models import (
+    Config,
+    LayoutConfig,
+    LLMSettings,
+    LoggingConfig,
+    SearchCriteria,
+)
 from src.utils.constants import CANDIDATE_COLUMNS, CSS_FILE
-from src.utils.io_utils import load_config, save_config
+from src.utils.io_utils import (
+    load_config,
+    load_layout_config,
+    save_config,
+    save_layout_config,
+)
 
 # Page Configuration
 st.set_page_config(
@@ -31,6 +42,7 @@ def main():
 
     try:
         config = load_config()
+        layout_config = load_layout_config()
     except Exception as e:
         st.error(f"設定の読み込み中にエラーが発生しました: {e}")
         return
@@ -186,30 +198,6 @@ def main():
                     help="Semantic Scholar API等の呼び出し失敗時の最大リトライ回数",
                 )
 
-            st.markdown("**UI設定**")
-            ui_col1, ui_col2 = st.columns(2)
-            with ui_col1:
-                # 既存の列 + 一般的な列の候補
-                candidate_cols = list(
-                    set(config.ui_settings.essential_columns + CANDIDATE_COLUMNS)
-                )
-
-                essential_cols_selected = st.multiselect(
-                    "結果表示の必須列を選択",
-                    options=candidate_cols,
-                    default=config.ui_settings.essential_columns,
-                    help="実行結果でデフォルト表示する列を選択します。",
-                )
-
-            with ui_col2:
-                items_per_page_setting = st.number_input(
-                    "1ページあたりの表示件数 (折り返し表示時)",
-                    min_value=1,
-                    max_value=100,
-                    value=config.ui_settings.items_per_page,
-                    help="「テキストを折り返して全体を表示」モード時のデフォルト表示件数",
-                )
-
         # Update config object for saving
         updated_config = Config(
             project_name=project_name,
@@ -230,10 +218,6 @@ def main():
                 iterations=iterations,
                 top_n_for_snowball=top_n_snowball,
                 max_retries=max_retries,
-            ),
-            ui_settings=Config.model_construct().ui_settings.__class__(
-                essential_columns=essential_cols_selected,
-                items_per_page=items_per_page_setting,
             ),
         )
 
@@ -278,6 +262,48 @@ def main():
     elif mode == "results":
         # Results Viewer
         st.header("📊 実行結果")
+
+        # UI Settings Expander
+        with st.expander("🎨 画面設定", expanded=False):
+            ui_col1, ui_col2 = st.columns(2)
+            with ui_col1:
+                # 既存の列 + 一般的な列の候補
+                candidate_cols = list(
+                    set(layout_config.ui_settings.essential_columns + CANDIDATE_COLUMNS)
+                )
+
+                essential_cols_selected = st.multiselect(
+                    "結果表示の必須列を選択",
+                    options=candidate_cols,
+                    default=layout_config.ui_settings.essential_columns,
+                    help="実行結果でデフォルト表示する列を選択します。",
+                )
+
+            with ui_col2:
+                items_per_page_setting = st.number_input(
+                    "1ページあたりの表示件数 (折り返し表示時)",
+                    min_value=1,
+                    max_value=100,
+                    value=layout_config.ui_settings.items_per_page,
+                    help="「テキストを折り返して全体を表示」モード時のデフォルト表示件数",
+                )
+
+            # Update layout config object for saving/using
+            updated_layout_config = LayoutConfig(
+                ui_settings=LayoutConfig.model_construct().ui_settings.__class__(
+                    essential_columns=essential_cols_selected,
+                    items_per_page=items_per_page_setting,
+                )
+            )
+
+            if st.button("💾 画面設定を保存"):
+                save_layout_config(updated_layout_config)
+                st.success("画面設定が保存されました！")
+                # Reload to reflect changes immediately
+                st.rerun()
+
+        # Update layout_config in memory for the current run loop to use new values immediately
+        layout_config = updated_layout_config
         project_name = config.project_name
         data_dir = Path("data")
         if data_dir.exists():
@@ -299,6 +325,7 @@ def main():
                 final_csv = selected_run / "final" / "final_review_matrix.csv"
                 if final_csv.exists():
                     st.subheader(f"{selected_run.name} の結果")
+
                     df = pd.read_csv(final_csv)
 
                     # Ensure numeric columns are displayed as integers
@@ -314,7 +341,7 @@ def main():
                     cols_to_display = df.columns.tolist()  # default all
 
                     # Filter columns based on settings
-                    essential_cols = config.ui_settings.essential_columns
+                    essential_cols = layout_config.ui_settings.essential_columns
                     filtered_cols = [col for col in essential_cols if col in df.columns]
                     if filtered_cols:
                         cols_to_display = filtered_cols
@@ -327,7 +354,7 @@ def main():
 
                     if wrap_text:
                         # Pagination for st.table
-                        items_per_page = config.ui_settings.items_per_page
+                        items_per_page = layout_config.ui_settings.items_per_page
                         total_items = len(display_df)
                         total_pages = (total_items - 1) // items_per_page + 1
 
