@@ -37,7 +37,7 @@ def main():
 
     # Sidebar for navigation
     st.sidebar.header("ナビゲーション")
-    menu_options = {"⚙️ 設定": "config", "🚀 実行": "exec"}
+    menu_options = {"⚙️ 設定": "config", "🚀 実行": "exec", "📊 結果": "results"}
     selection = st.sidebar.radio("移動先", list(menu_options.keys()))
     mode = menu_options[selection]
 
@@ -275,8 +275,7 @@ def main():
                     f"パイプラインが終了コード {process.returncode} で失敗しました。"
                 )
 
-        st.divider()
-
+    elif mode == "results":
         # Results Viewer
         st.header("📊 実行結果")
         project_name = config.project_name
