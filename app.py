@@ -301,6 +301,11 @@ def main():
                     st.subheader(f"{selected_run.name} の結果")
                     df = pd.read_csv(final_csv)
 
+                    # Ensure numeric columns are displayed as integers
+                    for col in ["year", "citationCount"]:
+                        if col in df.columns:
+                            df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+
                     # Display options
                     wrap_text = st.checkbox(
                         "テキストを折り返して全体を表示 (st.table)", value=False
