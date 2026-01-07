@@ -5,8 +5,7 @@ from typing import Any
 import arxiv
 import pandas as pd
 import requests
-from tenacity import (Retrying, retry_if_exception, stop_after_attempt,
-                      wait_exponential)
+from tenacity import Retrying, retry_if_exception, stop_after_attempt, wait_exponential
 from tqdm import tqdm
 
 from src.utils.constants import APP_LOGGER_NAME
@@ -31,7 +30,10 @@ def log_retry_attempt(retry_state):
     status_code = "N/A"
     error_type = "Unknown Error"
 
-    if isinstance(exception, requests.exceptions.HTTPError) and exception.response is not None:
+    if (
+        isinstance(exception, requests.exceptions.HTTPError)
+        and exception.response is not None
+    ):
         status_code = exception.response.status_code
         if status_code == 429:
             error_type = "Rate Limit"
@@ -58,21 +60,25 @@ class S2Collector:
             wait=wait_exponential(multiplier=2, min=5, max=120),
             retry=retry_if_exception(is_retryable_s2_error),
             before_sleep=log_retry_attempt,
-            reraise=True
+            reraise=True,
         ):
             with attempt:
-                response = requests.get(url, params=params, headers=self.headers, timeout=30)
+                response = requests.get(
+                    url, params=params, headers=self.headers, timeout=30
+                )
                 response.raise_for_status()
                 return response.json()
 
-    def search_by_keywords(self, keywords: list[str], limit: int = 100) -> list[dict[str, Any]]:
+    def search_by_keywords(
+        self, keywords: list[str], limit: int = 100
+    ) -> list[dict[str, Any]]:
         """キーワード検索を実行する"""
         query = " ".join(keywords)
         logger.info(f"Searching papers for keywords: {query}")
         params = {
             "query": query,
             "limit": limit,
-            "fields": "title,year,citationCount,abstract,externalIds,url"
+            "fields": "title,year,citationCount,abstract,externalIds,url",
         }
         data = self._get("paper/search", params)
         return data.get("data", [])
@@ -82,7 +88,7 @@ class S2Collector:
         logger.info(f"Getting references and citations for DOI: {doi} (Limit: {limit})")
         params = {
             "fields": "references.title,references.year,references.citationCount,references.abstract,references.externalIds,references.url,"
-                      "citations.title,citations.year,citations.citationCount,citations.abstract,citations.externalIds,citations.url"
+            "citations.title,citations.year,citations.citationCount,citations.abstract,citations.externalIds,citations.url"
         }
         try:
             data = self._get(f"paper/DOI:{doi}", params)
@@ -118,7 +124,9 @@ class S2Collector:
                 logger.warning(f"Failed to fetch paper for DOI {doi}: {e}")
         return results
 
-    def collect_initial(self, keywords: list[str], seed_dois: list[str], limit: int = 100) -> list[dict[str, Any]]:
+    def collect_initial(
+        self, keywords: list[str], seed_dois: list[str], limit: int = 100
+    ) -> list[dict[str, Any]]:
         """初期収集: キーワード検索とSeed DOIからの取得をマージする"""
         all_candidates = []
 
@@ -141,7 +149,7 @@ class S2Collector:
         df_scored: pd.DataFrame,
         top_n: int,
         related_limit: int = -1,
-        threshold: float | None = None
+        threshold: float | None = None,
     ) -> list[dict[str, Any]]:
         """
         スコア上位の論文から引用・被引用を取得する。
@@ -151,14 +159,18 @@ class S2Collector:
             return []
 
         # 1. Top N で絞り込み
-        top_n_papers = df_scored.sort_values(by="relevance_score", ascending=False).head(top_n)
+        top_n_papers = df_scored.sort_values(
+            by="relevance_score", ascending=False
+        ).head(top_n)
 
         # 2. Threshold で絞り込み (もし指定があれば)
         final_papers = top_n_papers
         if threshold is not None:
             threshold_papers = df_scored[df_scored["relevance_score"] >= threshold]
             if len(threshold_papers) > len(top_n_papers):
-                logging.info(f"Using threshold {threshold} yielded {len(threshold_papers)} papers, which is more than top_n {top_n}.")
+                logging.info(
+                    f"Using threshold {threshold} yielded {len(threshold_papers)} papers, which is more than top_n {top_n}."
+                )
                 final_papers = threshold_papers
 
         # ソートはしておく
@@ -178,7 +190,7 @@ class S2Collector:
         papers: list[dict[str, Any]],
         exclude_dois: set[str],
         min_citations: int,
-        year_range: list[int]
+        year_range: list[int],
     ) -> pd.DataFrame:
         """収集したRawデータをDataFrame化し、フィルタリング・補完を行う"""
         if not papers:
@@ -205,7 +217,7 @@ class S2Collector:
         df = df[~df["doi"].isin(exclude_dois)]
 
         # 今回のバッチ内での重複排除
-        logger.info(f"Dropped {sum(df.duplicated(subset=["doi"]))} duplicate papers.")
+        logger.info(f"Dropped {sum(df.duplicated(subset=['doi']))} duplicate papers.")
         df = df.drop_duplicates(subset=["doi"])
 
         if df.empty:
@@ -216,11 +228,15 @@ class S2Collector:
         if "citationCount" in df.columns:
             inds = df["citationCount"] >= min_citations
             df = df[inds]
-            logger.info(f"Dropped {sum(~inds)} papers with less than {min_citations} citations.")
+            logger.info(
+                f"Dropped {sum(~inds)} papers with less than {min_citations} citations."
+            )
         if "year" in df.columns and len(year_range) == 2:
             inds = (df["year"] >= year_range[0]) & (df["year"] <= year_range[1])
             df = df[inds]
-            logger.info(f"Dropped {sum(~inds)} papers outside of year range {year_range}.")
+            logger.info(
+                f"Dropped {sum(~inds)} papers outside of year range {year_range}."
+            )
 
         if df.empty:
             logger.info("No papers passed criteria (citations/year).")
@@ -234,7 +250,9 @@ class S2Collector:
         df = df[df["abstract"].str.strip().astype(bool) & df["abstract"].notna()]
         dropped_count = before_drop - len(df)
         if dropped_count > 0:
-            logger.info(f"Dropped {dropped_count} papers that still have no abstract after ArXiv fill attempt.")
+            logger.info(
+                f"Dropped {dropped_count} papers that still have no abstract after ArXiv fill attempt."
+            )
 
         logger.info(f"Papers ready for screening: {len(df)}")
         return df
@@ -246,23 +264,32 @@ class S2Collector:
         if missing_count == 0:
             return df
 
-        logger.info(f"Attempting to fill missing abstracts for {missing_count} papers using ArXiv API...")
+        logger.info(
+            f"Attempting to fill missing abstracts for {missing_count} papers using ArXiv API..."
+        )
         client = arxiv.Client()
 
         # イテレーション部分をtqdmでラップしてプログレスバー化
-        for idx, row in tqdm(df[missing_mask].iterrows(), total=missing_count, desc="Filling abstracts from ArXiv"):
+        for idx, row in tqdm(
+            df[missing_mask].iterrows(),
+            total=missing_count,
+            desc="Filling abstracts from ArXiv",
+        ):
             title = row["title"]
             doi = row.get("doi")
             query = f'ti:"{title}"'
             if doi:
-                query += f' OR id:{doi}'
+                query += f" OR id:{doi}"
 
             search = arxiv.Search(query=query, max_results=1)
             try:
                 results = list(client.results(search))
                 if results:
                     best_match = results[0]
-                    if title.lower() in best_match.title.lower() or best_match.title.lower() in title.lower():
+                    if (
+                        title.lower() in best_match.title.lower()
+                        or best_match.title.lower() in title.lower()
+                    ):
                         df.at[idx, "abstract"] = best_match.summary
                         # logger.info(f"Filled abstract for: {title}")  # ループ内ログは抑制
                 time.sleep(1)

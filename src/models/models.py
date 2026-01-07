@@ -33,6 +33,10 @@ class Config(BaseModel):
 
 
 class ScreeningResult(BaseModel):
-    relevance_score: int = Field(description="Score from 0 to 10 indicating relevance to the research theme.")
-    relevance_reason: str = Field(description="Brief reason for the assigned score (in Japanese).")
+    relevance_score: int = Field(
+        description="Score from 0 to 10 indicating relevance to the research theme."
+    )
+    relevance_reason: str = Field(
+        description="Brief reason for the assigned score (in Japanese)."
+    )
     summary: str = Field(description="A 1-2 sentence summary of the paper in Japanese.")

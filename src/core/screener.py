@@ -1,8 +1,9 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
-from google import genai
 import pandas as pd
+from google import genai
+
 from src.models.models import ScreeningResult
 from src.utils.constants import APP_LOGGER_NAME
 from src.utils.io_utils import ProgressTracker, get_prompt
@@ -19,7 +20,9 @@ class PaperScreener:
 
     def screen_papers(self, df: pd.DataFrame, research_scope: str) -> pd.DataFrame:
         """論文をLLMで並列にスクリーニングする"""
-        logger.info(f"Starting parallel screening for {len(df)} papers with {self.max_workers} workers")
+        logger.info(
+            f"Starting parallel screening for {len(df)} papers with {self.max_workers} workers"
+        )
 
         progress = ProgressTracker(total=len(df), prefix="Screening")
 
@@ -27,9 +30,15 @@ class PaperScreener:
             title = row.get("title", "No Title")
             abstract = row.get("abstract", "")
 
-            result = {"relevance_score": 0, "relevance_reason": "No abstract available", "summary": ""}
+            result = {
+                "relevance_score": 0,
+                "relevance_reason": "No abstract available",
+                "summary": "",
+            }
             if not abstract:
-                logger.warning(f"Skipping screening for {title} due to missing abstract")
+                logger.warning(
+                    f"Skipping screening for {title} due to missing abstract"
+                )
             else:
                 try:
                     score_data = self._call_llm(title, abstract, research_scope)
@@ -37,10 +46,18 @@ class PaperScreener:
                         result = score_data.model_dump()
                     else:
                         logger.warning(f"LLM returned None for paper {title}")
-                        result = {"relevance_score": 0, "relevance_reason": "LLM returned invalid response", "summary": ""}
+                        result = {
+                            "relevance_score": 0,
+                            "relevance_reason": "LLM returned invalid response",
+                            "summary": "",
+                        }
                 except Exception:
                     logger.exception(f"Error screening paper {title}")
-                    result = {"relevance_score": 0, "relevance_reason": "LLM Error occurred", "summary": ""}
+                    result = {
+                        "relevance_score": 0,
+                        "relevance_reason": "LLM Error occurred",
+                        "summary": "",
+                    }
 
             progress.update()
             return result
@@ -56,11 +73,11 @@ class PaperScreener:
 
         return df
 
-    def _call_llm(self, title: str, abstract: str, research_scope: str) -> ScreeningResult:
+    def _call_llm(
+        self, title: str, abstract: str, research_scope: str
+    ) -> ScreeningResult:
         prompt = self.prompt_template.format(
-            research_scope=research_scope,
-            title=title,
-            abstract=abstract
+            research_scope=research_scope, title=title, abstract=abstract
         )
 
         response = self.client.models.generate_content(
@@ -69,7 +86,7 @@ class PaperScreener:
             config={
                 "response_mime_type": "application/json",
                 "response_schema": ScreeningResult,
-            }
+            },
         )
 
         return response.parsed

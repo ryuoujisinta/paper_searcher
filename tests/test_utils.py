@@ -2,18 +2,18 @@ import os
 import shutil
 from unittest.mock import patch
 
-import pytest
 import pandas as pd
+import pytest
 
+from src.models.models import Config
 from src.utils.io_utils import (
     create_run_directory,
-    load_config,
-    save_config,
     get_prompt,
+    load_checkpoint,
+    load_config,
     save_checkpoint,
-    load_checkpoint
+    save_config,
 )
-from src.models.models import Config
 
 
 def test_load_config(tmp_path):
@@ -66,11 +66,8 @@ def test_create_run_directory(tmp_path, monkeypatch):
 def test_save_config(tmp_path):
     config = Config(
         project_name="saved_project",
-        search_criteria={
-            "keywords": ["test"],
-            "seed_paper_dois": []
-        },
-        llm_settings={"model_screening": "dummy"}
+        search_criteria={"keywords": ["test"], "seed_paper_dois": []},
+        llm_settings={"model_screening": "dummy"},
     )
     save_path = tmp_path / "saved_config.yml"
     save_config(config, save_path)

@@ -1,8 +1,8 @@
-import requests
 from unittest.mock import MagicMock, patch
 
-import pytest
 import pandas as pd
+import pytest
+import requests
 
 from src.core.collector import S2Collector, is_retryable_s2_error
 
@@ -19,8 +19,18 @@ def test_search_by_keywords(mock_get, collector):
     mock_response.status_code = 200
     mock_response.json.return_value = {
         "data": [
-            {"title": "Paper 1", "year": 2023, "citationCount": 50, "externalIds": {"DOI": "10.123/1"}},
-            {"title": "Paper 2", "year": 2022, "citationCount": 20, "externalIds": {"DOI": "10.123/2"}}
+            {
+                "title": "Paper 1",
+                "year": 2023,
+                "citationCount": 50,
+                "externalIds": {"DOI": "10.123/1"},
+            },
+            {
+                "title": "Paper 2",
+                "year": 2022,
+                "citationCount": 20,
+                "externalIds": {"DOI": "10.123/2"},
+            },
         ]
     }
     mock_get.return_value = mock_response
@@ -36,8 +46,22 @@ def test_search_by_keywords(mock_get, collector):
 def test_collect_filtering(collector):
     # Input papers
     papers = [
-        {"title": "P1", "year": 2023, "citationCount": 50, "externalIds": {"DOI": "D1"}, "abstract": "A", "url": "http://p1"},
-        {"title": "P2", "year": 2020, "citationCount": 5, "externalIds": {"DOI": "D2"}, "abstract": "B", "url": "http://p2"}
+        {
+            "title": "P1",
+            "year": 2023,
+            "citationCount": 50,
+            "externalIds": {"DOI": "D1"},
+            "abstract": "A",
+            "url": "http://p1",
+        },
+        {
+            "title": "P2",
+            "year": 2020,
+            "citationCount": 5,
+            "externalIds": {"DOI": "D2"},
+            "abstract": "B",
+            "url": "http://p2",
+        },
     ]
 
     # Mocking _fill_missing_abstracts_with_arxiv
@@ -55,7 +79,10 @@ def test_get_snowball_candidates_threshold(mock_get_related, collector):
     mock_get_related.return_value = [{"title": "Related"}]
 
     # Create dummy DataFrame with scores
-    data = {"doi": [f"10.123/{i}" for i in range(6)], "relevance_score": [10, 9, 8, 7, 6, 5]}
+    data = {
+        "doi": [f"10.123/{i}" for i in range(6)],
+        "relevance_score": [10, 9, 8, 7, 6, 5],
+    }
     df = pd.DataFrame(data)
 
     # Case 1: top_n=2, threshold=None -> Should return 2 (Scores 10, 9)
@@ -80,7 +107,7 @@ def test_get_related_papers(mock_get, collector):
     mock_response.status_code = 200
     mock_response.json.return_value = {
         "references": [{"title": "Ref1"}],
-        "citations": [{"title": "Cit1"}]
+        "citations": [{"title": "Cit1"}],
     }
     mock_get.return_value = mock_response
 
@@ -131,9 +158,7 @@ def test_fill_missing_abstracts_with_arxiv(mock_client_cls, collector):
     mock_client.results.return_value = iter([mock_result])
 
     # Input DataFrame with missing abstract
-    df = pd.DataFrame([
-        {"title": "Paper Title", "doi": "10.123/1", "abstract": ""}
-    ])
+    df = pd.DataFrame([{"title": "Paper Title", "doi": "10.123/1", "abstract": ""}])
 
     # Run the method
     # We can patch time.sleep to speed it up
@@ -145,9 +170,9 @@ def test_fill_missing_abstracts_with_arxiv(mock_client_cls, collector):
 
 
 def test_fill_missing_abstracts_no_op(collector):
-    df = pd.DataFrame([
-        {"title": "Paper Title", "doi": "10.123/1", "abstract": "Existing Abstract"}
-    ])
+    df = pd.DataFrame(
+        [{"title": "Paper Title", "doi": "10.123/1", "abstract": "Existing Abstract"}]
+    )
 
     # Should return immediately without calling arxiv
     with patch("src.core.collector.arxiv.Client") as mock_client:
@@ -187,7 +212,7 @@ def test_get_related_papers_edge_cases(mock_get, collector):
     mock_get.side_effect = None
     mock_get.return_value = {
         "references": [{"title": "R1"}, {"title": "R2"}],
-        "citations": [{"title": "C1"}]
+        "citations": [{"title": "C1"}],
     }  # Total 3
     res_limit = collector.get_related_papers("doi", limit=2)
     assert len(res_limit) == 2
@@ -220,7 +245,7 @@ def test_process_papers_edge_cases(collector):
     # Duplicate DOI in same batch
     papers_dup = [
         {"externalIds": {"DOI": "D1"}, "title": "T1", "abstract": "A"},
-        {"externalIds": {"DOI": "D1"}, "title": "T1 Duplicate", "abstract": "A"}
+        {"externalIds": {"DOI": "D1"}, "title": "T1 Duplicate", "abstract": "A"},
     ]
     df_dup = collector.process_papers(papers_dup, set(), 0, [2000, 2099])
     assert len(df_dup) == 1

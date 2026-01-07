@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock, patch
+
 import pandas as pd
 import pytest
+
 from src.core.screener import PaperScreener
 from src.models.models import ScreeningResult
 
@@ -19,9 +21,7 @@ def test_screen_papers_success(screener):
     # Mock LLM response
     mock_response = MagicMock()
     mock_response.parsed = ScreeningResult(
-        relevance_score=8,
-        relevance_reason="Relevant",
-        summary="Summary"
+        relevance_score=8, relevance_reason="Relevant", summary="Summary"
     )
     mock_client.models.generate_content.return_value = mock_response
 

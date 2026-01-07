@@ -1,7 +1,8 @@
-from google import genai
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
+from google import genai
 
 
 def verify_simple():
@@ -19,8 +20,7 @@ def verify_simple():
     client = genai.Client(api_key=api_key)
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents="Say 'Hello, I am connected!'"
+            model="gemini-2.5-flash-lite", contents="Say 'Hello, I am connected!'"
         )
         print(f"Response: {response.text}")
         print("API connection successful!")

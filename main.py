@@ -8,10 +8,7 @@ import pandas as pd
 from src.core.collector import S2Collector
 from src.core.screener import PaperScreener
 from src.utils.constants import APP_LOGGER_NAME
-from src.utils.io_utils import (
-    create_run_directory,
-    load_config
-)
+from src.utils.io_utils import create_run_directory, load_config
 from src.utils.logging_config import setup_logging
 
 logger = logging.getLogger(f"{APP_LOGGER_NAME}.main")
@@ -28,6 +25,7 @@ def main():
 
     # ~/.env から Gemini API Key を読み込む
     from dotenv import load_dotenv
+
     env_path = Path.home() / ".env"
     load_dotenv(dotenv_path=env_path)
     google_key = os.getenv("GOOGLE_API_KEY") or ""
@@ -49,7 +47,7 @@ def main():
     screener = PaperScreener(
         api_key=google_key,
         model_name=config.llm_settings.model_screening,
-        max_workers=config.llm_settings.max_screening_workers
+        max_workers=config.llm_settings.max_screening_workers,
     )
 
     # イテレーション管理
@@ -59,19 +57,21 @@ def main():
     next_candidates = collector.collect_initial(
         keywords=keywords,
         seed_dois=config.search_criteria.seed_paper_dois,
-        limit=config.search_criteria.keyword_search_limit
+        limit=config.search_criteria.keyword_search_limit,
     )
 
     for i in range(config.search_criteria.iterations):
         iteration_num = i + 1
-        logger.info(f"--- Iteration {iteration_num}/{config.search_criteria.iterations} ---")
+        logger.info(
+            f"--- Iteration {iteration_num}/{config.search_criteria.iterations} ---"
+        )
 
         # 処理 & フィルタリング
         df_new = collector.process_papers(
             papers=next_candidates,
             exclude_dois=processed_dois,
             min_citations=config.search_criteria.min_citations,
-            year_range=config.search_criteria.year_range
+            year_range=config.search_criteria.year_range,
         )
 
         if df_new.empty:
@@ -107,9 +107,11 @@ def main():
                 df_scored,
                 top_n,
                 related_limit=config.search_criteria.max_related_papers,
-                threshold=config.search_criteria.screening_threshold
+                threshold=config.search_criteria.screening_threshold,
             )
-            logger.info(f"Found {len(next_candidates)} potential papers for next iteration.")
+            logger.info(
+                f"Found {len(next_candidates)} potential papers for next iteration."
+            )
         else:
             next_candidates = []  # Loop ends
 
@@ -119,7 +121,9 @@ def main():
 
     # 4. Sorting and Saving
     # 同一論文が複数イテレーションで現れる可能性（スコアが変わる可能性）を考慮し、最高スコアを残す
-    final_df = all_papers_df.sort_values(by="relevance_score", ascending=False).drop_duplicates(subset=["doi"])
+    final_df = all_papers_df.sort_values(
+        by="relevance_score", ascending=False
+    ).drop_duplicates(subset=["doi"])
 
     # --- Saving Final Results ---
     final_data_csv = run_dir / "final" / "final_review_matrix.csv"

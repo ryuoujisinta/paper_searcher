@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+
 from src.utils.constants import APP_LOGGER_NAME
 
 
@@ -10,7 +11,9 @@ def setup_logging(log_dir: Path, level: str = "INFO") -> None:
 
     numeric_level = getattr(logging, level.upper(), logging.INFO)
 
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
 
     file_handler = logging.FileHandler(log_file, encoding="utf-8-sig")
     file_handler.setFormatter(formatter)

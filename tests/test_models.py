@@ -5,7 +5,7 @@ def test_screening_result_valid():
     data = {
         "relevance_score": 5,
         "relevance_reason": "Test reason",
-        "summary": "Test summary"
+        "summary": "Test summary",
     }
     model = ScreeningResult(**data)
     assert model.relevance_score == 5
