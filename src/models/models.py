@@ -25,11 +25,28 @@ class LLMSettings(BaseModel):
     max_screening_workers: int = 5
 
 
+class UISettings(BaseModel):
+    essential_columns: list[str] = Field(
+        default_factory=lambda: [
+            "relevance_score",
+            "title",
+            "summary",
+            "relevance_reason",
+            "citationCount",
+            "year",
+            "doi",
+            "url",
+        ]
+    )
+    items_per_page: int = 10
+
+
 class Config(BaseModel):
     project_name: str
     search_criteria: SearchCriteria
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     llm_settings: LLMSettings
+    ui_settings: UISettings = Field(default_factory=UISettings)
 
 
 class ScreeningResult(BaseModel):

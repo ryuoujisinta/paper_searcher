@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from src.models.models import Config, LLMSettings, LoggingConfig, SearchCriteria
-from src.utils.constants import CSS_FILE
+from src.utils.constants import CANDIDATE_COLUMNS, CSS_FILE
 from src.utils.io_utils import load_config, save_config
 
 # Page Configuration
@@ -186,6 +186,30 @@ def main():
                     help="Semantic Scholar API等の呼び出し失敗時の最大リトライ回数",
                 )
 
+            st.markdown("**UI設定**")
+            ui_col1, ui_col2 = st.columns(2)
+            with ui_col1:
+                # 既存の列 + 一般的な列の候補
+                candidate_cols = list(
+                    set(config.ui_settings.essential_columns + CANDIDATE_COLUMNS)
+                )
+
+                essential_cols_selected = st.multiselect(
+                    "結果表示の必須列を選択",
+                    options=candidate_cols,
+                    default=config.ui_settings.essential_columns,
+                    help="実行結果でデフォルト表示する列を選択します。",
+                )
+
+            with ui_col2:
+                items_per_page_setting = st.number_input(
+                    "1ページあたりの表示件数 (折り返し表示時)",
+                    min_value=1,
+                    max_value=100,
+                    value=config.ui_settings.items_per_page,
+                    help="「テキストを折り返して全体を表示」モード時のデフォルト表示件数",
+                )
+
         # Update config object for saving
         updated_config = Config(
             project_name=project_name,
@@ -206,6 +230,10 @@ def main():
                 iterations=iterations,
                 top_n_for_snowball=top_n_snowball,
                 max_retries=max_retries,
+            ),
+            ui_settings=Config.model_construct().ui_settings.__class__(
+                essential_columns=essential_cols_selected,
+                items_per_page=items_per_page_setting,
             ),
         )
 
@@ -273,7 +301,50 @@ def main():
                 if final_csv.exists():
                     st.subheader(f"{selected_run.name} の結果")
                     df = pd.read_csv(final_csv)
-                    st.dataframe(df)
+
+                    # Display options
+                    wrap_text = st.checkbox(
+                        "テキストを折り返して全体を表示 (st.table)", value=False
+                    )
+
+                    cols_to_display = df.columns.tolist()  # default all
+
+                    # Filter columns based on settings
+                    essential_cols = config.ui_settings.essential_columns
+                    filtered_cols = [col for col in essential_cols if col in df.columns]
+                    if filtered_cols:
+                        cols_to_display = filtered_cols
+                    else:
+                        st.warning(
+                            "表示対象の列がデータに含まれていません。すべての列を表示します。"
+                        )
+
+                    display_df = df[cols_to_display]
+
+                    if wrap_text:
+                        # Pagination for st.table
+                        items_per_page = config.ui_settings.items_per_page
+                        total_items = len(display_df)
+                        total_pages = (total_items - 1) // items_per_page + 1
+
+                        if total_pages > 1:
+                            page_number = st.number_input(
+                                "ページ番号",
+                                min_value=1,
+                                max_value=total_pages,
+                                value=1,
+                            )
+                            start_idx = (page_number - 1) * items_per_page
+                            end_idx = min(start_idx + items_per_page, total_items)
+
+                            st.write(
+                                f"全 {total_items} 件中 {start_idx + 1} - {end_idx} 件目を表示"
+                            )
+                            st.table(display_df.iloc[start_idx:end_idx])
+                        else:
+                            st.table(display_df)
+                    else:
+                        st.dataframe(display_df)
 
                     # Download button
                     with open(final_csv, "rb") as f:

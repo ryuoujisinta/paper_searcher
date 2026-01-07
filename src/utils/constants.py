@@ -6,3 +6,16 @@ DATA_DIR = Path("data")
 PROMPTS_DIR = Path("prompts")
 ASSETS_DIR = Path("assets")
 CSS_FILE = ASSETS_DIR / "css" / "style.css"
+
+CANDIDATE_COLUMNS = [
+    "relevance_score",
+    "title",
+    "summary",
+    "relevance_reason",
+    "citationCount",
+    "year",
+    "doi",
+    "url",
+    "authors",
+    "venue",
+]
