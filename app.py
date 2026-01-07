@@ -335,7 +335,7 @@ def main():
 
                     # Display options
                     wrap_text = st.checkbox(
-                        "テキストを折り返して全体を表示 (st.table)", value=False
+                        "テキストを折り返して全体を表示 (st.table)", value=True
                     )
 
                     cols_to_display = df.columns.tolist()  # default all
